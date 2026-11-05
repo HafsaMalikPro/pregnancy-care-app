@@ -1,0 +1,20 @@
+{
+  "kind": "meal_plan",
+  "slug": "<lowercase-hyphenated-slug>",
+  "locale": "en",
+  "title": "<Plan name>",
+  "summary": "<One sentence>",
+  "category": "nutrition",
+  "trimester": null,
+  "tags": [],
+  "sections": {
+    "days": [
+      { "day": 1, "meals": [{ "slot": "breakfast", "recipeSlug": "<published-recipe-slug>" }] }
+    ],
+    "dietPatterns": ["no_restriction"],
+    "trimesters": [1, 2, 3],
+    "hydrationNote": "<Reviewed hydration guidance>",
+    "cuisine": null
+  },
+  "references": [{ "title": "<Source title>", "url": "https://example.org/<source>" }]
+}

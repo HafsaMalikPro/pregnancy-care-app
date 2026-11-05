@@ -1,0 +1,86 @@
+name: Backend CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  checks:
+    name: Lint, typecheck, test, build
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_USER: preconception
+          POSTGRES_PASSWORD: preconception_ci
+          POSTGRES_DB: preconception
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U preconception"
+          --health-interval 5s --health-timeout 3s --health-retries 10
+    env:
+      # Synthetic CI database only.
+      DATABASE_URL: postgresql://preconception:preconception_ci@localhost:5432/preconception
+      NODE_ENV: test
+      # Throwaway value for the CI app instance only; real secrets come from the secret store.
+      BETTER_AUTH_SECRET: ci-only-not-a-secret-0123456789abcdef
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+        with:
+          package_json_file: package.json
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+
+      - run: pnpm install --frozen-lockfile
+      - name: Formatting
+        run: pnpm format:check
+      - name: Build shared packages and apps
+        run: pnpm build
+      - name: Lint
+        run: pnpm lint
+      - name: Typecheck
+        run: pnpm typecheck
+      - name: Unit tests
+        run: pnpm test
+
+      - name: Apply migrations
+        run: pnpm --filter @preconception/api exec prisma migrate deploy
+      - name: Check schema and migrations are in sync
+        run: pnpm --filter @preconception/api exec prisma migrate diff --from-config-datasource --to-schema prisma/schema.prisma --exit-code
+      - name: API integration tests
+        run: pnpm --filter @preconception/api test:e2e
+
+  security:
+    name: Dependency and secret scanning
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - uses: pnpm/action-setup@v6
+        with:
+          package_json_file: package.json
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+      - name: Dependency audit (high and critical)
+        run: pnpm audit --prod --audit-level high
+      - name: Secret scan
+        uses: gitleaks/gitleaks-action@v3
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

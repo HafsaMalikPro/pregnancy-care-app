@@ -1,0 +1,26 @@
+packages:
+  - apps/*
+  - packages/*
+
+allowBuilds:
+  prisma: true
+  '@prisma/engines': true
+  '@nestjs/core': false
+  '@scarf/scarf': false
+
+minimumReleaseAgeExclude:
+  - '@turbo/darwin-64@2.11.9'
+  - '@turbo/darwin-arm64@2.11.9'
+  - '@turbo/linux-64@2.11.9'
+  - '@turbo/linux-arm64@2.11.9'
+  - '@turbo/windows-64@2.11.9'
+  - '@turbo/windows-arm64@2.11.9'
+  - turbo@2.11.9
+
+# Security patches for transitive dependencies (same major as the parents expect):
+# body-parser < 2.4.0 and multer < 2.5.0 (DoS, via @nestjs/platform-express),
+# fast-uri < 3.1.9 (via Prisma's dev tooling). Remove once the parents depend on these.
+overrides:
+  'body-parser@>=2.0.0 <2.4.0': ^2.4.0
+  'multer@>=2.0.0 <2.5.0': ^2.5.0
+  'fast-uri@>=3.0.0 <3.1.9': ^3.1.9

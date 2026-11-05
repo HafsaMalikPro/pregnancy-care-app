@@ -1,0 +1,26 @@
+{
+  "kind": "week_guide",
+  "week": 20,
+  "locale": "en",
+  "title": "<Title for the week>",
+  "summary": "<One-sentence summary>",
+  "sections": {
+    "baby": "<2-4 plain sentences on the baby this week; sizes as 'about'>",
+    "body": "<Common changes in the body>",
+    "symptoms": ["<symptom>"],
+    "eat": "<Eating guidance for this week>",
+    "move": "<Movement guidance for this week>",
+    "visits": "<Care that usually happens around now>",
+    "askAtVisit": ["<Question to ask>"],
+    "prepare": ["<Something to prepare>"],
+    "avoid": ["<Food or activity to avoid>"],
+    "whenToGetHelp": ["<Warning sign and what to do>"],
+    "checklist": [],
+    "message": "<Short supportive message>",
+    "firstPregnancyNote": null,
+    "subsequentPregnancyNote": null,
+    "babyMilestones": ["<Milestone>"],
+    "sizeComparison": null
+  },
+  "references": [{ "title": "<Source title>", "url": "https://example.org/<source>" }]
+}

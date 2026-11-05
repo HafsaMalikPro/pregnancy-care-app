@@ -1,0 +1,20 @@
+# Local development only. Synthetic data only — never load real user records here.
+name: preconception-local
+services:
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: preconception
+      POSTGRES_PASSWORD: preconception_local
+      POSTGRES_DB: preconception
+    ports:
+      - '5434:5432'
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U preconception']
+      interval: 5s
+      timeout: 3s
+      retries: 10
+volumes:
+  pgdata:
