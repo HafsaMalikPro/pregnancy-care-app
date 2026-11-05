@@ -1,0 +1,108 @@
+@import "tailwindcss";
+
+/*
+ * Pregnancy Care design tokens — one light theme, from the brand brief:
+ * cream #FFF7F2, white, rose #D45D7A, plum #512D46, blush #FCE3E5, sage #80A987,
+ * lavender #A58BD4.
+ *
+ * Roles (checked for contrast):
+ * - `--rose` is the brief's brand rose: illustrations, accents, gradient starts.
+ * - `--clay` is a deeper rose for surfaces behind white text (4.8:1 on white).
+ * - `--clay-strong` is rose text on cream or blush (6:1).
+ * - `--sage` is "done" text/icons on light surfaces; `--sage-bright` is the brief's sage fill.
+ * - `--plum` is the readable lavender for calm information text; `--lavender` is the fill.
+ */
+:root {
+  color-scheme: light;
+  --paper: #fff7f2;
+  --paper-2: #fdeeee;
+  --card: #ffffff;
+  --sunk: #fdf0ee;
+  --ink: #5b4352;
+  --heading: #512d46;
+  --muted: #7a6470;
+  --line: #f6e3e1;
+  --slate: #512d46;
+  --rose: #d45d7a;
+  --clay: #c2456a;
+  --clay-strong: #a8335a;
+  --clay-soft: #fce3e5;
+  --sage: #4e7a57;
+  --sage-bright: #80a987;
+  --sage-soft: #eaf3ec;
+  --plum: #6a4fa8;
+  --lavender: #a58bd4;
+  --plum-soft: #f1ebfa;
+  --warn: #8a5300;
+  --warn-soft: #fcf0dc;
+  --danger: #b42318;
+  --danger-soft: #fde8e6;
+  --shadow: 0 1px 2px rgb(81 45 70 / 0.04), 0 12px 30px -16px rgb(212 93 122 / 0.28);
+}
+
+@theme inline {
+  --color-paper: var(--paper);
+  --color-paper-2: var(--paper-2);
+  --color-blush: var(--clay-soft);
+  --color-card: var(--card);
+  --color-sunk: var(--sunk);
+  --color-ink: var(--ink);
+  --color-heading: var(--heading);
+  --color-muted: var(--muted);
+  --color-line: var(--line);
+  --color-rose: var(--rose);
+  --color-clay: var(--clay);
+  --color-clay-strong: var(--clay-strong);
+  --color-clay-soft: var(--clay-soft);
+  --color-slate: var(--slate);
+  --color-sage: var(--sage);
+  --color-sage-bright: var(--sage-bright);
+  --color-sage-soft: var(--sage-soft);
+  --color-plum: var(--plum);
+  --color-lavender: var(--lavender);
+  --color-plum-soft: var(--plum-soft);
+  --color-warn: var(--warn);
+  --color-warn-soft: var(--warn-soft);
+  --color-danger: var(--danger);
+  --color-danger-soft: var(--danger-soft);
+  --shadow-soft: var(--shadow);
+  --font-sans: var(--font-body);
+}
+
+body {
+  /* The soft cream-to-blush wash behind every page in the reference design. */
+  background: linear-gradient(180deg, var(--paper) 0%, var(--paper-2) 100%) fixed var(--paper);
+  color: var(--ink);
+}
+
+/* In the base layer so a text colour utility on a heading can override it. */
+@layer base {
+  h1,
+  h2,
+  h3 {
+    color: var(--heading);
+    text-wrap: balance;
+  }
+}
+
+:focus-visible {
+  outline: 2px solid var(--clay);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* Grid items may shrink below their content (e.g. scrollable week strips) instead of
+   widening the page. */
+@layer base {
+  .grid > * {
+    min-width: 0;
+  }
+}
