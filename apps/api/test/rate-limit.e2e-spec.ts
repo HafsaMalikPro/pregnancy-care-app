@@ -2,7 +2,7 @@ import { Controller, Get, type INestApplication } from '@nestjs/common';
 import request from 'supertest';
 import type { App } from 'supertest/types.js';
 import { Public } from '../src/auth/auth.decorators.js';
-import { anonymous, createTestApp } from './helpers.js';
+import { anonymous, createTestApp, signUp } from './helpers.js';
 
 /**
  * A public test-only controller isolates the global ThrottlerGuard (and the error filter's 429
@@ -60,6 +60,35 @@ describe('Rate limiting (e2e)', () => {
       statuses.push(res.status);
     }
     expect(statuses).toContain(429);
+  });
+
+  it('limits data exports to 3 per hour', async () => {
+    const http = request(app.getHttpServer());
+    // A registered user: this file's guest-session budget is spent by the test above.
+    const user = await signUp(app);
+    for (let i = 0; i < 3; i++) {
+      await http.post('/v1/me/export').set(user).expect(200);
+    }
+    const res = await http.post('/v1/me/export').set(user).expect(429);
+    expect(res.body.error.code).toBe('RATE_LIMITED');
+    expect(res.headers['retry-after']).toBeDefined();
+  });
+
+  it('limits account-deletion attempts to 3 per hour', async () => {
+    const http = request(app.getHttpServer());
+    // Wrong confirmations: each attempt is rejected (400) but still counts.
+    const statuses: number[] = [];
+    for (let i = 0; i < 4; i++) {
+      const user = await signUp(app).catch(() => null);
+      if (!user) break; // sign-up itself is rate limited (10/hour); enough attempts were made
+      const res = await http
+        .post('/v1/me/deletion')
+        .set(user)
+        .send({ confirm: 'no' });
+      statuses.push(res.status);
+    }
+    expect(statuses.slice(0, 3)).toEqual([400, 400, 400]);
+    expect(statuses[3]).toBe(429);
   });
 
   it('never throttles health probes', async () => {

@@ -218,6 +218,12 @@ export class PregnancyService {
       throw new BadRequestException(['endedOn cannot be in the future']);
     }
     const active = await this.requireActive(owner);
+    // Gestation day 0 is the dating start (LMP-equivalent); nothing can end before it.
+    if (gestationDays(toIsoDate(active.dueDate), endedOn) < 0) {
+      throw new BadRequestException([
+        'endedOn cannot be before the pregnancy began',
+      ]);
+    }
     const row = await this.prisma.$transaction(async (tx) => {
       const ended = await tx.pregnancy.update({
         where: { id: active.id },

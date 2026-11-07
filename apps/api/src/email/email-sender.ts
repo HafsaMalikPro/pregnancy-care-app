@@ -6,6 +6,11 @@ export interface EmailMessage {
   text: string;
   /** Short machine-readable kind for logs and provider tags; never personal data. */
   tag: 'password_reset' | 'email_verification' | 'reminder';
+  /**
+   * Same key = same message. A retry after a timeout (where the provider may already have
+   * accepted the first attempt) is then delivered once, not twice. No personal data.
+   */
+  idempotencyKey?: string;
 }
 
 export interface SentEmail {
@@ -58,17 +63,36 @@ export class LogEmailSender implements EmailSender {
 export class MemoryEmailSender implements EmailSender {
   readonly enabled = true;
   readonly sent: EmailMessage[] = [];
-  /** Codes to fail the next sends with, in order, e.g. ['RATE_LIMITED']. */
-  readonly failures: { code: string; retryable: boolean }[] = [];
+  /**
+   * Failures for the next sends, in order, e.g. [{ code: 'RATE_LIMITED', retryable: true }].
+   * `to` limits a failure to one recipient, so a test's failure can't be consumed by another
+   * test's email. `afterAccept` simulates a provider that accepted the message but whose
+   * response was lost (e.g. a timeout): the message counts as sent and the call still fails.
+   */
+  readonly failures: {
+    code: string;
+    retryable: boolean;
+    to?: string;
+    afterAccept?: boolean;
+  }[] = [];
+  /** Like Resend: a repeated idempotency key returns the first message's id, sending nothing. */
+  private readonly idsByKey = new Map<string, string>();
+
   send(message: EmailMessage): Promise<SentEmail> {
-    const failure = this.failures.shift();
-    if (failure) {
-      return Promise.reject(
-        new EmailSendError(failure.code, failure.retryable),
-      );
+    const index = this.failures.findIndex((f) => !f.to || f.to === message.to);
+    const failure = index >= 0 ? this.failures.splice(index, 1)[0] : undefined;
+    const fail = () =>
+      Promise.reject(new EmailSendError(failure!.code, failure!.retryable));
+    if (failure && !failure.afterAccept) return fail();
+
+    const key = message.idempotencyKey;
+    let id = key ? this.idsByKey.get(key) : undefined;
+    if (!id) {
+      this.sent.push(message);
+      id = `memory-${this.sent.length}`;
+      if (key) this.idsByKey.set(key, id);
     }
-    this.sent.push(message);
-    return Promise.resolve({ id: `memory-${this.sent.length}` });
+    return failure ? fail() : Promise.resolve({ id });
   }
 }
 
@@ -89,6 +113,9 @@ export class ResendEmailSender implements EmailSender {
         headers: {
           Authorization: `Bearer ${this.apiKey}`,
           'Content-Type': 'application/json',
+          ...(message.idempotencyKey && {
+            'Idempotency-Key': message.idempotencyKey,
+          }),
         },
         body: JSON.stringify({
           from: this.from,

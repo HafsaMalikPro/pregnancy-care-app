@@ -287,8 +287,14 @@ describe('email and reminder delivery (e2e)', () => {
       const reminder = await emailReminder(user);
       const due = plus(reminder.nextRunAt, 1000);
 
-      mail.failures.push({ code: 'RATE_LIMITED', retryable: true });
-      expect(await delivery.tick(due)).toMatchObject({ queued: 1, retried: 1 });
+      // Targeted at this user: tick() also dispatches other tests' due deliveries, which
+      // used to consume an untargeted failure and made this test flaky.
+      mail.failures.push({
+        code: 'RATE_LIMITED',
+        retryable: true,
+        to: user.email,
+      });
+      expect(await delivery.tick(due)).toMatchObject({ retried: 1 });
       let [row] = await deliveriesOf(reminder.id);
       expect(row).toMatchObject({
         status: 'pending',
@@ -301,15 +307,17 @@ describe('email and reminder delivery (e2e)', () => {
       expect(
         await delivery.tick(plus(due.toISOString(), 30_000)),
       ).toMatchObject({ sent: 0 });
-      expect(
-        await delivery.tick(plus(due.toISOString(), 61_000)),
-      ).toMatchObject({ sent: 1 });
+      await delivery.tick(plus(due.toISOString(), 61_000));
       [row] = await deliveriesOf(reminder.id);
       expect(row).toMatchObject({ status: 'sent', attempts: 2 });
 
       // A permanent rejection fails without retrying.
       const other = await emailReminder(user, { localTime: '21:00' });
-      mail.failures.push({ code: 'REJECTED_422', retryable: false });
+      mail.failures.push({
+        code: 'REJECTED_422',
+        retryable: false,
+        to: user.email,
+      });
       await delivery.tick(plus(other.nextRunAt, 1000));
       expect((await deliveriesOf(other.id))[0]).toMatchObject({
         status: 'failed',
@@ -317,11 +325,42 @@ describe('email and reminder delivery (e2e)', () => {
       });
     });
 
+    it('does not send twice when the provider accepted a send whose response was lost', async () => {
+      const user = await verifiedUser();
+      const reminder = await emailReminder(user);
+      const due = plus(reminder.nextRunAt, 1000);
+      // The provider accepts the message, then the response times out: the delivery retries.
+      mail.failures.push({
+        code: 'NETWORK_ERROR',
+        retryable: true,
+        to: user.email,
+        afterAccept: true,
+      });
+      await delivery.tick(due);
+      expect((await deliveriesOf(reminder.id))[0]).toMatchObject({
+        status: 'pending',
+        lastErrorCode: 'NETWORK_ERROR',
+      });
+      await delivery.tick(plus(due.toISOString(), 61_000));
+      const [row] = await deliveriesOf(reminder.id);
+      expect(row).toMatchObject({ status: 'sent', attempts: 2 });
+      // The retry carried the same idempotency key, so the provider delivered one email.
+      const sent = mail.sent.filter(
+        (m) => m.to === user.email && m.tag === 'reminder',
+      );
+      expect(sent).toHaveLength(1);
+      expect(sent[0].idempotencyKey).toBe(`reminder-delivery/${row.id}`);
+    });
+
     it('cancels queued sends when a reminder is paused, and stops scheduling it', async () => {
       const user = await verifiedUser();
       const reminder = await emailReminder(user);
       const due = plus(reminder.nextRunAt, 1000);
-      mail.failures.push({ code: 'PROVIDER_503', retryable: true });
+      mail.failures.push({
+        code: 'PROVIDER_503',
+        retryable: true,
+        to: user.email,
+      });
       await delivery.tick(due);
 
       const paused = await http

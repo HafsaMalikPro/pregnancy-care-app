@@ -5,6 +5,7 @@ export default defineConfig({
   // added by `nest g library`. Requires Vite 8, which ships this option.
   resolve: { tsconfigPaths: true },
   test: {
+    name: 'unit',
     globals: true,
     root: './',
     coverage: {

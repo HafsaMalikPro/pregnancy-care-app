@@ -122,8 +122,18 @@ export class DailyPlanService {
             locale: opts.locale,
           })
         : null,
+      // One exercise plan per pregnancy week in the range (at most two for a 7-day view), so
+      // each day gets the activities reviewed for its own week.
       active
-        ? this.plans.exercisePlan(owner, { date: start, locale: opts.locale })
+        ? Promise.all(
+            [...firstDateOfEachWeek(dates, weekOf)].map(async (d) => {
+              const plan = await this.plans.exercisePlan(owner, {
+                date: d,
+                locale: opts.locale,
+              });
+              return [weekOf(d), plan.activities] as const;
+            }),
+          ).then((pairs) => new Map(pairs))
         : null,
       this.prisma.activityLog.findMany({
         where: {
@@ -164,7 +174,7 @@ export class DailyPlanService {
             eaten: m.eaten,
           }),
         ),
-        activities: (exercise?.activities ?? [])
+        activities: (exercise?.get(week) ?? [])
           .slice(0, MAX_ACTIVITIES)
           .map((a) => ({
             slug: a.slug,
@@ -258,6 +268,16 @@ export class DailyPlanService {
   private async today(zone: string) {
     return wallDate(wallTime(Date.now(), zone));
   }
+}
+
+/** The first date in `dates` for each distinct week. */
+function firstDateOfEachWeek(
+  dates: string[],
+  weekOf: (date: string) => number | null,
+): Set<string> {
+  const seen = new Map<number | null, string>();
+  for (const d of dates) if (!seen.has(weekOf(d))) seen.set(weekOf(d), d);
+  return new Set(seen.values());
 }
 
 function wall(date: string) {

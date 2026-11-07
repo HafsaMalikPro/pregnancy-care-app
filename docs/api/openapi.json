@@ -6932,7 +6932,7 @@
     },
     "/v1/admin/readiness-tasks/{id}/publish": {
       "post": {
-        "description": "Roles: clinical_reviewer, administrator.",
+        "description": "Roles: clinical_reviewer, administrator. The reviewer cannot be someone who created or edited this version of the task (403).",
         "operationId": "AdminTasksController_publish_v1",
         "parameters": [
           {

@@ -2,6 +2,7 @@ import {
   Body,
   ConflictException,
   Controller,
+  ForbiddenException,
   Get,
   HttpCode,
   HttpStatus,
@@ -26,6 +27,7 @@ import { ApiErrors, ApiUserAuth } from '../common/swagger.js';
 import { PrismaService } from '../database/prisma.service.js';
 import type {
   ContentStatus,
+  Prisma,
   ReadinessTask,
 } from '../generated/prisma/client.js';
 import { AdminTaskDto, CreateTaskDto, UpdateTaskDto } from './admin.dto.js';
@@ -64,23 +66,25 @@ export class AdminTasksController {
     @Body() dto: CreateTaskDto,
     @Req() req: Request,
   ) {
-    const task = await this.prisma.readinessTask.create({
-      data: {
-        key: dto.key,
-        locale: dto.locale,
-        title: dto.title,
-        description: dto.description,
-        category: dto.category,
-        sortOrder: dto.sortOrder,
-        premium: dto.premium,
-        articleId: dto.articleId ?? null,
-        fromWeek: dto.fromWeek ?? null,
-        toWeek: dto.toWeek ?? null,
-        status: 'draft',
-      },
+    return this.prisma.$transaction(async (tx) => {
+      const task = await tx.readinessTask.create({
+        data: {
+          key: dto.key,
+          locale: dto.locale,
+          title: dto.title,
+          description: dto.description,
+          category: dto.category,
+          sortOrder: dto.sortOrder,
+          premium: dto.premium,
+          articleId: dto.articleId ?? null,
+          fromWeek: dto.fromWeek ?? null,
+          toWeek: dto.toWeek ?? null,
+          status: 'draft',
+        },
+      });
+      await this.log(tx, actor, 'readiness_task.created', task, req.requestId);
+      return task;
     });
-    await this.log(actor, 'readiness_task.created', task, req.requestId);
-    return task;
   }
 
   @Patch(':id')
@@ -98,13 +102,15 @@ export class AdminTasksController {
     @Body() dto: UpdateTaskDto,
     @Req() req: Request,
   ) {
-    await this.find(id);
-    const task = await this.prisma.readinessTask.update({
-      where: { id },
-      data: { ...taskFields(dto), status: 'draft' },
+    return this.prisma.$transaction(async (tx) => {
+      await this.find(id, tx);
+      const task = await tx.readinessTask.update({
+        where: { id },
+        data: { ...taskFields(dto), status: 'draft' },
+      });
+      await this.log(tx, actor, 'readiness_task.updated', task, req.requestId);
+      return task;
     });
-    await this.log(actor, 'readiness_task.updated', task, req.requestId);
-    return task;
   }
 
   @Post(':id/publish')
@@ -112,7 +118,8 @@ export class AdminTasksController {
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
     summary: 'Publish a task after clinical review',
-    description: 'Roles: clinical_reviewer, administrator.',
+    description:
+      'Roles: clinical_reviewer, administrator. The reviewer cannot be someone who created or edited this version of the task (403).',
   })
   @ApiOkResponse({ type: AdminTaskDto })
   @ApiErrors(400, 404, 409)
@@ -157,41 +164,87 @@ export class AdminTasksController {
     to: ContentStatus,
     requestId?: string,
   ) {
-    const existing = await this.find(id);
-    if (!from.includes(existing.status)) {
-      throw new ConflictException(
-        `Task cannot move from ${existing.status} to ${to}.`,
-      );
-    }
-    const task = await this.prisma.readinessTask.update({
-      where: { id },
-      data: { status: to },
+    return this.prisma.$transaction(async (tx) => {
+      // Lock the row so a concurrent edit can't slip in between the checks and the change.
+      await tx.$queryRaw`SELECT id FROM readiness_tasks WHERE id = ${id}::uuid FOR UPDATE`;
+      const existing = await this.find(id, tx);
+      if (!from.includes(existing.status)) {
+        throw new ConflictException(
+          `Task cannot move from ${existing.status} to ${to}.`,
+        );
+      }
+      if (to === 'published') await this.assertNotAuthor(tx, actor, id);
+      const task = await tx.readinessTask.update({
+        where: { id },
+        data: { status: to },
+      });
+      await this.log(tx, actor, `readiness_task.${to}`, task, requestId);
+      return task;
     });
-    await this.log(actor, `readiness_task.${to}`, task, requestId);
-    return task;
   }
 
-  private async find(id: string): Promise<ReadinessTask> {
-    const task = await this.prisma.readinessTask.findUnique({ where: { id } });
+  /**
+   * Separation of duties: tasks are edited in place, so "this version" is everything since the
+   * task was last published. Whoever created or edited it in that time cannot publish it.
+   */
+  private async assertNotAuthor(
+    tx: Prisma.TransactionClient,
+    actor: SessionUser,
+    id: string,
+  ) {
+    const lastPublished = await tx.auditEvent.findFirst({
+      where: {
+        targetType: 'readiness_task',
+        targetId: id,
+        action: 'readiness_task.published',
+      },
+      orderBy: { createdAt: 'desc' },
+      select: { createdAt: true },
+    });
+    if (
+      await this.audit.touched(
+        tx,
+        actor.id,
+        'readiness_task',
+        id,
+        ['readiness_task.created', 'readiness_task.updated'],
+        lastPublished?.createdAt,
+      )
+    ) {
+      throw new ForbiddenException(
+        'You cannot publish a task you created or edited; another reviewer must publish it.',
+      );
+    }
+  }
+
+  private async find(
+    id: string,
+    db: Prisma.TransactionClient = this.prisma,
+  ): Promise<ReadinessTask> {
+    const task = await db.readinessTask.findUnique({ where: { id } });
     if (!task) throw new NotFoundException('Task not found.');
     return task;
   }
 
   private log(
+    tx: Prisma.TransactionClient,
     actor: SessionUser,
     action: string,
     task: ReadinessTask,
     requestId?: string,
   ) {
-    return this.audit.record({
-      action,
-      actorUserId: actor.id,
-      actorRole: actor.staffRole,
-      targetType: 'readiness_task',
-      targetId: task.id,
-      requestId,
-      metadata: { key: task.key, locale: task.locale },
-    });
+    return this.audit.record(
+      {
+        action,
+        actorUserId: actor.id,
+        actorRole: actor.staffRole,
+        targetType: 'readiness_task',
+        targetId: task.id,
+        requestId,
+        metadata: { key: task.key, locale: task.locale },
+      },
+      tx,
+    );
   }
 }
 

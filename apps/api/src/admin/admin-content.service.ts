@@ -235,9 +235,17 @@ export class AdminContentService {
       if (article.status !== 'in_review') {
         throw new ConflictException('Only articles in review can be reviewed.');
       }
-      if (article.createdById === actor.id) {
+      // Separation of duties: neither the author nor anyone who edited this version (e.g. an
+      // administrator, who holds both roles) may approve it.
+      if (
+        article.createdById === actor.id ||
+        (await this.audit.touched(tx, actor.id, 'article', id, [
+          'article.created',
+          'article.updated',
+        ]))
+      ) {
         throw new ForbiddenException(
-          'Authors cannot review their own articles.',
+          'Authors cannot review their own articles, including ones they edited.',
         );
       }
       const now = new Date();

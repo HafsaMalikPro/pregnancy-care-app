@@ -47,12 +47,18 @@ Local Postgres uses port **5434** to avoid clashing with other Postgres instance
 ```sh
 pnpm format:check
 pnpm build && pnpm lint && pnpm typecheck && pnpm test
-pnpm --filter @preconception/api test:e2e         # needs the database running
+pnpm --filter @preconception/api exec prisma validate
+export TEST_DATABASE_URL=postgresql://preconception:preconception_local@localhost:5434/preconception_e2e
+pnpm --filter @preconception/api test:e2e         # integration + e2e, real Postgres
+pnpm --filter @preconception/api test:coverage    # unit + e2e, fails below 80% coverage
 pnpm audit --prod --audit-level high
 ```
 
-E2E tests create accounts and publish test content, so point them at a disposable database
-with `TEST_DATABASE_URL` (see `apps/api/.env.example`) rather than your dev database. After changing an endpoint, run
+E2E tests create accounts and publish test content, so they run only against the disposable
+database named in `TEST_DATABASE_URL` (create it once with `createdb`, then
+`DATABASE_URL=$TEST_DATABASE_URL pnpm --filter @preconception/api db:deploy`). They never fall
+back to `DATABASE_URL` and refuse non-local hosts (`apps/api/test/db-safety.ts`). Test
+factories live in `apps/api/test/fixtures.ts`. Latest QA results: `docs/QA_REPORT_2026-11-06.md`. After changing an endpoint, run
 `pnpm --filter @preconception/api build && pnpm --filter @preconception/api openapi:export`
 to refresh `docs/api/openapi.json` (an e2e test fails if it drifts).
 

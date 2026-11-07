@@ -24,6 +24,37 @@ export class PrivacyService {
             data: { userId: owner.id, kind: 'export', status: 'processing' },
           })
         : null;
+    try {
+      const bundle = await this.buildBundle(owner);
+      if (job) {
+        await this.prisma.privacyJob.update({
+          where: { id: job.id },
+          data: { status: 'completed', completedAt: new Date() },
+        });
+      }
+      await this.audit.record({
+        action: 'privacy.export',
+        actorUserId: owner.kind === 'user' ? owner.id : null,
+        targetType: owner.kind === 'user' ? 'user' : 'anonymous_session',
+        targetId: owner.id,
+        requestId,
+      });
+      return bundle;
+    } catch (error) {
+      // Never leave the job looking in progress: the user's export history must say it failed.
+      if (job) {
+        await this.prisma.privacyJob
+          .update({
+            where: { id: job.id },
+            data: { status: 'failed', completedAt: new Date() },
+          })
+          .catch(() => undefined);
+      }
+      throw error;
+    }
+  }
+
+  private async buildBundle(owner: Owner) {
     const where = ownerWhere(owner);
     const [
       profile,
@@ -226,20 +257,6 @@ export class PrivacyService {
         currentPeriodEnd: s.currentPeriodEnd?.toISOString() ?? null,
       })),
     };
-
-    if (job) {
-      await this.prisma.privacyJob.update({
-        where: { id: job.id },
-        data: { status: 'completed', completedAt: new Date() },
-      });
-    }
-    await this.audit.record({
-      action: 'privacy.export',
-      actorUserId: owner.kind === 'user' ? owner.id : null,
-      targetType: owner.kind === 'user' ? 'user' : 'anonymous_session',
-      targetId: owner.id,
-      requestId,
-    });
     return bundle;
   }
 

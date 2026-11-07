@@ -13,6 +13,7 @@ import { addDays, fromIsoDate, toIsoDate } from '../common/dates.js';
 import {
   type ActivePregnancy,
   PregnancyContext,
+  weekOn,
 } from '../common/pregnancy-context.js';
 import {
   activityFits,
@@ -99,6 +100,17 @@ export class PersonalPlansService {
     const sectionsBySlug = new Map<string, RecipeSections>(
       [...recipes].map(([slug, r]) => [slug, r.sections]),
     );
+    // The plan must be reviewed for the trimester of every requested day, not just today's:
+    // a week view can start in the future or cross a trimester boundary.
+    const start = opts.date ?? active.today;
+    const end = addDays(start, opts.days - 1);
+    const dueDate = toIsoDate(active.row.dueDate);
+    const trimesters = [
+      ...new Set([
+        weekOn(dueDate, start).trimester,
+        weekOn(dueDate, end).trimester,
+      ]),
+    ];
     const chosen = choosePlan(
       plans.map((p) => ({
         slug: p.slug,
@@ -106,12 +118,10 @@ export class PersonalPlansService {
       })),
       sectionsBySlug,
       prefs,
-      active.trimester,
+      trimesters,
     );
     if (!chosen) return empty('none_matching');
 
-    const start = opts.date ?? active.today;
-    const end = addDays(start, opts.days - 1);
     const logs = await this.prisma.mealLog.findMany({
       where: {
         ...ownerWhere(owner),
@@ -155,15 +165,20 @@ export class PersonalPlansService {
     opts: { date?: string; locale: string },
   ): Promise<ExercisePlan> {
     const active = await this.pregnancy.active(owner);
+    // Activities are matched to the week of the requested date, not today's week: an activity
+    // reviewed only up to week 27 must not be offered for a day in week 30.
+    const date = opts.date ?? active?.today;
+    const at =
+      active && date ? weekOn(toIsoDate(active.row.dueDate), date) : null;
     const empty = (
       availability: ExercisePlan['availability'],
     ): ExercisePlan => ({
       availability,
-      week: active?.week ?? null,
+      week: at?.week ?? null,
       activities: [],
       disclaimer: EXERCISE_DISCLAIMER,
     });
-    if (!active) return empty('no_pregnancy');
+    if (!active || !at || !date) return empty('no_pregnancy');
     // Never offer generic activities to someone a clinician asked to limit exercise.
     if (active.row.restrictExercise) return empty('clinician_guidance');
 
@@ -173,15 +188,10 @@ export class PersonalPlansService {
     );
     if (!rows.length) return empty('none_published');
     const fitting = rows.filter((r) =>
-      activityFits(
-        r.sections as ActivitySections,
-        active.week,
-        active.trimester,
-      ),
+      activityFits(r.sections as ActivitySections, at.week, at.trimester),
     );
     if (!fitting.length) return empty('none_matching');
 
-    const date = opts.date ?? active.today;
     const done = await this.prisma.activityLog.findMany({
       where: { ...ownerWhere(owner), date: fromIsoDate(date) },
       select: { activitySlug: true },
@@ -189,7 +199,7 @@ export class PersonalPlansService {
     const doneSet = new Set(done.map((d) => d.activitySlug));
     return {
       availability: 'available',
-      week: active.week,
+      week: at.week,
       activities: fitting.map((r) => ({
         ...toActivity(r, reviews.get(r.id) ?? null),
         doneToday: doneSet.has(r.slug),

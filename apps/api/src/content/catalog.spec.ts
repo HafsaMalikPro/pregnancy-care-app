@@ -10,6 +10,7 @@ import {
   type FoodPreferences,
   isoWeekday,
   mealsForDate,
+  mentions,
   recipeAllergens,
   recipeExclusion,
 } from './catalog.js';
@@ -197,5 +198,83 @@ describe('activityFits', () => {
     expect(activityFits(activity(), 30, 3)).toBe(false);
     expect(activityFits(activity({ fromWeek: 16 }), 14, 2)).toBe(false);
     expect(activityFits(activity({ toWeek: 20 }), 21, 2)).toBe(false);
+  });
+});
+
+describe('mentions: singular and plural forms (regression)', () => {
+  // Before the fix only "<singular> excludes <plural>" matched; a user excluding "eggs" still
+  // got "1 egg", and "berry" did not exclude "mixed berries".
+  it.each([
+    ['1 egg, boiled', 'eggs'],
+    ['Eggs', 'egg'],
+    ['Mixed berries', 'berry'],
+    ['1 strawberry', 'strawberries'],
+    ['Sliced mushroom', 'mushrooms'],
+    ['Chopped tomato', 'tomatoes'],
+    ['Peaches in juice', 'peach'],
+    ['Black olives', 'olive'],
+    ['Hummus', 'hummus'],
+    ['Peanut butter', 'peanuts'],
+    ['Dairy-free yoghurt', 'dairy'],
+    ['Smoked salmon', ' Salmon '],
+  ])('"%s" mentions "%s"', (ingredient, food) => {
+    expect(mentions(ingredient, food)).toBe(true);
+  });
+
+  it.each([
+    ['Nutmeg', 'nut'],
+    ['Nutmeg', 'nuts'],
+    ['Peanut butter', 'pea'],
+    ['Peanut butter', 'peas'],
+    ['Eggplant', 'egg'],
+    ['Pineapple', 'apple'],
+    ['Oatmeal', 'oats'],
+    ['Glass noodles', 'gla'],
+    ['Anything', ''],
+    ['Anything', '   '],
+  ])('"%s" does not mention "%s"', (ingredient, food) => {
+    expect(mentions(ingredient, food)).toBe(false);
+  });
+
+  it('treats regex characters in a food literally', () => {
+    expect(mentions('c++ sauce', 'c++')).toBe(true);
+    expect(mentions('cream', '.*')).toBe(false);
+  });
+
+  it('excludes a recipe through recipeExclusion with a plural avoid term', () => {
+    const r = recipe({
+      ingredients: [{ name: '2 eggs', quantity: null, allergens: [] }],
+    });
+    expect(recipeExclusion(r, prefs({ avoidFoods: ['egg'] }))).toBe(
+      'avoided_food',
+    );
+    const one = recipe({
+      ingredients: [{ name: '1 egg', quantity: null, allergens: [] }],
+    });
+    expect(recipeExclusion(one, prefs({ avoidFoods: ['eggs'] }))).toBe(
+      'avoided_food',
+    );
+  });
+});
+
+describe('choosePlan across trimesters (regression)', () => {
+  const recipes = new Map<string, RecipeSections>([['dal', recipe()]]);
+
+  it('requires a plan to cover every trimester in the requested days', () => {
+    const plans = [
+      plan('second-only', ['dal'], { trimesters: [2] }),
+      plan('second-and-third', ['dal'], { trimesters: [2, 3] }),
+    ];
+    expect(choosePlan(plans, recipes, prefs(), [2])?.slug).toBe(
+      'second-and-third',
+    );
+    expect(choosePlan(plans, recipes, prefs(), [2, 3])?.slug).toBe(
+      'second-and-third',
+    );
+    expect(choosePlan([plans[0]], recipes, prefs(), [2, 3])).toBeNull();
+    // A single trimester is still accepted.
+    expect(choosePlan([plans[0]], recipes, prefs(), 2)?.slug).toBe(
+      'second-only',
+    );
   });
 });

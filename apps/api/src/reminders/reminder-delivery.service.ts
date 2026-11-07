@@ -230,14 +230,16 @@ export class ReminderDeliveryService
     }
 
     try {
-      const sent = await this.email.send(
-        reminderEmail(
+      const sent = await this.email.send({
+        ...reminderEmail(
           user.email,
           reminder.kind,
           reminder.label,
           this.config.get('APP_URL', { infer: true }).replace(/\/$/, ''),
         ),
-      );
+        // One key per occurrence: retries of this delivery can't produce a second email.
+        idempotencyKey: `reminder-delivery/${id}`,
+      });
       await finish({
         status: 'sent',
         sentAt: new Date(),

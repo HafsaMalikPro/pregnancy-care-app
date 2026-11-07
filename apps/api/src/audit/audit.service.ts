@@ -30,4 +30,30 @@ export class AuditService {
       },
     });
   }
+
+  /**
+   * Whether `actorUserId` performed any of `actions` on the target (after `since`, if given).
+   * Backs separation-of-duties checks: the audit row is written in the same transaction as
+   * the change it records, so it is a reliable record of who authored or edited content.
+   */
+  async touched(
+    tx: Prisma.TransactionClient,
+    actorUserId: string,
+    targetType: string,
+    targetId: string,
+    actions: string[],
+    since?: Date,
+  ): Promise<boolean> {
+    const found = await tx.auditEvent.findFirst({
+      where: {
+        actorUserId,
+        targetType,
+        targetId,
+        action: { in: actions },
+        ...(since && { createdAt: { gt: since } }),
+      },
+      select: { id: true },
+    });
+    return found !== null;
+  }
 }

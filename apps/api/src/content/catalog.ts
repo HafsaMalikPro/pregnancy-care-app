@@ -59,13 +59,38 @@ export function recipeExclusion(
   return null;
 }
 
-/** Whole-word match, so "nut" doesn't exclude "nutmeg" but "peanut" excludes "peanut butter". */
-function mentions(ingredient: string, food: string): boolean {
+/**
+ * Whole-word match, so "nut" doesn't exclude "nutmeg" but "peanut" excludes "peanut butter".
+ * Singular and plural forms match each other in both directions ("eggs" excludes "1 egg",
+ * "berry" excludes "mixed berries"): people type either form, and a miss here would serve a
+ * food they asked to avoid. Over-matching only hides a recipe, so the stems err wide.
+ */
+export function mentions(ingredient: string, food: string): boolean {
   const f = food.trim().toLowerCase();
   if (!f) return false;
-  const escaped = f.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-  return new RegExp(`(^|[^a-z])${escaped}(e?s)?([^a-z]|$)`).test(ingredient);
+  const alternatives = singularForms(f).map((stem) => {
+    const escaped = escapeRegExp(stem);
+    return stem.endsWith('y') && stem.length > 2
+      ? `${escapeRegExp(stem.slice(0, -1))}(?:y|ies)`
+      : `${escaped}(?:e?s)?`;
+  });
+  return new RegExp(`(^|[^a-z])(?:${alternatives.join('|')})([^a-z]|$)`).test(
+    ingredient.toLowerCase(),
+  );
 }
+
+/** The term plus the singular forms it could be a plural of. */
+function singularForms(term: string): string[] {
+  const forms = new Set([term]);
+  if (term.endsWith('ies') && term.length > 4)
+    forms.add(`${term.slice(0, -3)}y`);
+  if (term.endsWith('es') && term.length > 3) forms.add(term.slice(0, -2));
+  if (term.endsWith('s') && !term.endsWith('ss') && term.length > 2)
+    forms.add(term.slice(0, -1));
+  return [...forms];
+}
+
+const escapeRegExp = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
 export interface PlanCandidate {
   slug: string;
@@ -82,11 +107,14 @@ export function choosePlan(
   plans: PlanCandidate[],
   recipes: Map<string, RecipeSections>,
   prefs: FoodPreferences,
-  trimester: 1 | 2 | 3,
+  /** Every trimester the requested days fall in; the plan must be reviewed for all of them. */
+  trimester: 1 | 2 | 3 | (1 | 2 | 3)[],
 ): PlanCandidate | null {
   const diet = prefs.dietPattern;
+  const trimesters = Array.isArray(trimester) ? trimester : [trimester];
   const suitable = plans.filter((p) => {
-    if (!p.sections.trimesters.includes(trimester)) return false;
+    if (!trimesters.every((t) => p.sections.trimesters.includes(t)))
+      return false;
     if (
       diet &&
       FILTERED_DIETS.includes(diet) &&
