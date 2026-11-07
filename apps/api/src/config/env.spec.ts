@@ -1,4 +1,4 @@
-import { validateEnv } from './env.js';
+import { secureCookies, validateEnv } from './env.js';
 
 describe('validateEnv', () => {
   const base = {
@@ -96,16 +96,31 @@ describe('validateEnv', () => {
           ...prod,
           RATE_LIMIT_ENABLED: 'false',
           ADMIN_REQUIRE_MFA: 'false',
+          AUTH_COOKIE_SECURE: 'false',
           EMAIL_PROVIDER: 'log',
           CORS_ORIGINS: 'http://app.example.com',
           BETTER_AUTH_URL: 'http://api.example.com',
         }),
       ).toThrow(
-        'Invalid environment configuration: RATE_LIMIT_ENABLED, ADMIN_REQUIRE_MFA, EMAIL_PROVIDER, BETTER_AUTH_URL, CORS_ORIGINS',
+        'Invalid environment configuration: RATE_LIMIT_ENABLED, ADMIN_REQUIRE_MFA, AUTH_COOKIE_SECURE, EMAIL_PROVIDER, BETTER_AUTH_URL, CORS_ORIGINS',
       );
       expect(() => validateEnv({ ...prod, CORS_ORIGINS: '' })).toThrow(
         'CORS_ORIGINS',
       );
+    });
+  });
+
+  describe('secure cookies', () => {
+    it('default on in production and staging, off in development and test', () => {
+      expect(secureCookies({ NODE_ENV: 'production' })).toBe(true);
+      expect(secureCookies({ NODE_ENV: 'staging' })).toBe(true);
+      expect(secureCookies({ NODE_ENV: 'development' })).toBe(false);
+      expect(secureCookies({ NODE_ENV: 'test' })).toBe(false);
+    });
+
+    it('can be forced on locally (e.g. behind an https proxy)', () => {
+      const env = validateEnv({ ...base, AUTH_COOKIE_SECURE: 'true' });
+      expect(secureCookies(env)).toBe(true);
     });
   });
 

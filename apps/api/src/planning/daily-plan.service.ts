@@ -1,4 +1,8 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import type { DailyPlan, DailyPlanDay } from '@preconception/contracts';
 import { type Owner, ownerWhere } from '../auth/owner.js';
 import { addDays, fromIsoDate, toIsoDate } from '../common/dates.js';
@@ -218,6 +222,10 @@ export class DailyPlanService {
     await this.consent.assertHealthDataConsent(owner);
     const active = await this.pregnancy.active(owner);
     if (!active) throw new NotFoundException('No active pregnancy.');
+    // "Today" is the owner's profile-zone date, as for every other health write.
+    if (date > active.today) {
+      throw new BadRequestException(['date cannot be in the future']);
+    }
     const week = Number(key.slice('guide:w'.length));
     const weekStart = dateAtGestation(toIsoDate(active.row.dueDate), week * 7);
     const where = {

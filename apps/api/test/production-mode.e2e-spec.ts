@@ -1,7 +1,7 @@
 import type { INestApplication } from '@nestjs/common';
 import request from 'supertest';
 import type { App } from 'supertest/types.js';
-import { createTestApp } from './helpers.js';
+import { createTestApp, PASSWORD, uniqueEmail } from './helpers.js';
 
 describe('Production mode (e2e)', () => {
   let app: INestApplication<App>;
@@ -32,5 +32,20 @@ describe('Production mode (e2e)', () => {
 
   it('still serves health probes', async () => {
     await request(app.getHttpServer()).get('/v1/health/live').expect(200);
+  });
+
+  it('issues session cookies with the Secure and HttpOnly attributes', async () => {
+    const res = await request(app.getHttpServer())
+      .post('/v1/auth/sign-up/email')
+      .set('Origin', 'https://app.example.test')
+      .send({ email: uniqueEmail(), password: PASSWORD, name: 'Prod Check' })
+      .expect(200);
+    const cookies = ([] as string[]).concat(res.headers['set-cookie'] ?? []);
+    const session = cookies.find((c) => c.includes('session_token='));
+    expect(session).toBeDefined();
+    expect(session).toMatch(/;\s*Secure/i);
+    expect(session).toMatch(/;\s*HttpOnly/i);
+    // Better Auth prefixes secure cookies with __Secure-.
+    expect(session).toMatch(/^__Secure-/);
   });
 });

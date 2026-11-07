@@ -128,6 +128,13 @@ export async function buildOpenApiDocument(
   return mergeAuthSchema(document, authSchema as unknown as AuthOpenApi);
 }
 
+/**
+ * Operations Better Auth's schema generator lists but the mounted handler does not serve:
+ * get-session answers GET only (POST returns 405). A runtime e2e test probes every documented
+ * auth operation, so a new mismatch fails CI.
+ */
+const UNSERVED_AUTH_OPERATIONS = new Set(['post /get-session']);
+
 interface AuthOpenApi {
   paths: Record<string, Record<string, Record<string, unknown>>>;
   components?: { schemas?: Record<string, unknown> };
@@ -144,6 +151,7 @@ function mergeAuthSchema(
   for (const [path, ops] of Object.entries(auth.paths)) {
     const merged: Record<string, unknown> = {};
     for (const [method, op] of Object.entries(ops)) {
+      if (UNSERVED_AUTH_OPERATIONS.has(`${method} ${path}`)) continue;
       merged[method] = {
         ...withExample(toOpenApi30(op), AUTH_REQUEST_EXAMPLES[path]),
         tags: ['auth'],

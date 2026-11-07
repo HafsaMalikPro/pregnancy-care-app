@@ -19,6 +19,14 @@ const EnvSchema = z.object({
     .enum(['true', 'false'])
     .default('true')
     .transform((v) => v === 'true'),
+  /**
+   * Session cookies carry the Secure attribute (sent over https only). Defaults to on in
+   * production and staging; production refuses `false`.
+   */
+  AUTH_COOKIE_SECURE: z
+    .enum(['true', 'false'])
+    .optional()
+    .transform((v) => (v === undefined ? undefined : v === 'true')),
   /** Per-IP rate limiting (Nest throttler and Better Auth). Disable only in tests. */
   RATE_LIMIT_ENABLED: z
     .enum(['true', 'false'])
@@ -80,6 +88,8 @@ function checkCombinations(
     issue('RATE_LIMIT_ENABLED', 'must be true in production');
   if (!env.ADMIN_REQUIRE_MFA)
     issue('ADMIN_REQUIRE_MFA', 'must be true in production');
+  if (env.AUTH_COOKIE_SECURE === false)
+    issue('AUTH_COOKIE_SECURE', 'must be true in production');
   if (env.EMAIL_PROVIDER === 'log')
     issue('EMAIL_PROVIDER', 'log is for development only');
   if (!env.BETTER_AUTH_URL.startsWith('https://'))
@@ -93,6 +103,17 @@ function checkCombinations(
 }
 
 const CheckedEnvSchema = EnvSchema.superRefine(checkCombinations);
+
+/** Whether session cookies get the Secure attribute (explicit setting, else by environment). */
+export function secureCookies(env: {
+  NODE_ENV: z.infer<typeof EnvSchema>['NODE_ENV'];
+  AUTH_COOKIE_SECURE?: boolean;
+}): boolean {
+  return (
+    env.AUTH_COOKIE_SECURE ??
+    (env.NODE_ENV === 'production' || env.NODE_ENV === 'staging')
+  );
+}
 
 export type Env = z.infer<typeof CheckedEnvSchema>;
 

@@ -292,6 +292,56 @@ describe('HTTP contract (e2e)', () => {
       expect(documented).toEqual([...REGISTERED_ROUTES].sort());
     });
 
+    it('documents exactly the Nest routes registered at runtime', async () => {
+      // Read from the live Express router, not a hand-written list.
+      const instance = app.getHttpAdapter().getInstance() as {
+        router: {
+          stack: { route?: { path: string; methods: Record<string, true> } }[];
+        };
+      };
+      const runtime = instance.router.stack
+        .flatMap((layer) =>
+          layer.route
+            ? Object.keys(layer.route.methods).map(
+                (m) =>
+                  `${m.toUpperCase()} ${layer.route!.path.replace(/:(\w+)/g, '{$1}')}`,
+              )
+            : [],
+        )
+        // Better Auth is one catch-all mount; Swagger UI assets are framework routes.
+        .filter((r) => r.includes(' /v1/') && !r.includes('/v1/auth/'))
+        .sort();
+      const { body } = await http.get('/docs/openapi.json');
+      const documented = Object.entries(body.paths as Record<string, object>)
+        .flatMap(([path, ops]) =>
+          Object.keys(ops).map((m) => `${m.toUpperCase()} ${path}`),
+        )
+        .filter((r) => !r.includes('/v1/auth/'))
+        .sort();
+      expect(documented).toEqual(runtime);
+    });
+
+    it('every documented auth operation is served (no 404 or 405)', async () => {
+      const { body } = await http.get('/docs/openapi.json');
+      const unserved: string[] = [];
+      for (const [path, ops] of Object.entries(
+        body.paths as Record<string, object>,
+      )) {
+        if (!path.startsWith('/v1/auth/')) continue;
+        for (const method of Object.keys(ops)) {
+          const res = await (
+            http as unknown as Record<string, (p: string) => request.Test>
+          )
+            [method](path.replace(/\{[^}]+\}/g, 'x'))
+            .send({});
+          if (res.status === 404 || res.status === 405) {
+            unserved.push(`${method.toUpperCase()} ${path} → ${res.status}`);
+          }
+        }
+      }
+      expect(unserved).toEqual([]);
+    });
+
     it('defines response schemas and the shared error schema', async () => {
       const { body } = await http.get('/docs/openapi.json');
       const schemas = body.components.schemas;

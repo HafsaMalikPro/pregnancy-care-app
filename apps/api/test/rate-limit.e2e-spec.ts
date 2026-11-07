@@ -62,6 +62,40 @@ describe('Rate limiting (e2e)', () => {
     expect(statuses).toContain(429);
   });
 
+  it('limits two-factor backup-code guesses to 5 per minute', async () => {
+    const http = request(app.getHttpServer());
+    const statuses: number[] = [];
+    for (let i = 0; i < 7; i++) {
+      const res = await http
+        .post('/v1/auth/two-factor/verify-backup-code')
+        .send({ code: `guess-${i}` });
+      statuses.push(res.status);
+    }
+    expect(statuses.slice(0, 5)).not.toContain(429);
+    expect(statuses).toContain(429);
+  });
+
+  it('limits append-only consent changes to 30 per hour', async () => {
+    const http = request(app.getHttpServer());
+    const user = await signUp(app);
+    const statuses: number[] = [];
+    for (let i = 0; i < 31; i++) {
+      const res = await http
+        .post('/v1/me/consents')
+        .set(user)
+        .send({
+          purpose: 'product_analytics',
+          granted: i % 2 === 0,
+          policyVersion: '2026-10-01',
+          source: 'test',
+        });
+      statuses.push(res.status);
+    }
+    expect(statuses.slice(0, 30)).not.toContain(429);
+    expect(statuses[0]).toBeLessThan(300);
+    expect(statuses[30]).toBe(429);
+  });
+
   it('limits data exports to 3 per hour', async () => {
     const http = request(app.getHttpServer());
     // A registered user: this file's guest-session budget is spent by the test above.

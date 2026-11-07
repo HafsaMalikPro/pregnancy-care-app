@@ -9,7 +9,11 @@ import {
 } from '@nestjs/common';
 import type { ApiError, ErrorCode } from '@preconception/contracts';
 import type { Request, Response } from 'express';
-import { CodedForbiddenException, dbFailure } from '../errors.js';
+import {
+  CodedConflictException,
+  CodedForbiddenException,
+  dbFailure,
+} from '../errors.js';
 
 const CODE_BY_STATUS: Partial<Record<number, ErrorCode>> = {
   [HttpStatus.BAD_REQUEST]: 'VALIDATION_ERROR',
@@ -43,7 +47,8 @@ export class ApiExceptionFilter implements ExceptionFilter {
           bodyParserStatus(exception) ??
           HttpStatus.INTERNAL_SERVER_ERROR);
     const code =
-      exception instanceof CodedForbiddenException
+      exception instanceof CodedForbiddenException ||
+      exception instanceof CodedConflictException
         ? exception.code
         : (CODE_BY_STATUS[status] ??
           (status < 500 ? 'VALIDATION_ERROR' : 'INTERNAL_ERROR'));

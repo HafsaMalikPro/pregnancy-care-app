@@ -11,6 +11,7 @@ import { IsBoolean, IsIn, IsString, Matches, MaxLength } from 'class-validator';
 import { CurrentOwner } from '../auth/auth.decorators.js';
 import type { Owner } from '../auth/owner.js';
 import { ApiErrors, ApiOwnerAuth } from '../common/swagger.js';
+import { ThrottleWrite } from '../common/throttle.js';
 import { ConsentService } from './consent.service.js';
 
 class RecordConsentDto {
@@ -66,6 +67,7 @@ export class ConsentController {
   }
 
   @Post()
+  @ThrottleWrite('consentChange')
   @ApiOperation({
     summary: 'Grant or withdraw consent',
     description:

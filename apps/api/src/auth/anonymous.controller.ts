@@ -127,7 +127,7 @@ export class AnonymousSessionController {
   @ApiOperation({
     summary: 'Move anonymous data into the signed-in account',
     description:
-      'Moves pregnancies, cycles, daily logs, task progress, consent history, reminders and (if the account has none) the profile. Rejected with 409 when the account already has health data. The anonymous secret stops working afterwards.',
+      'Moves pregnancies, cycles, daily logs, task progress, consent history, reminders and (if the account has none) the profile. Rejected with 409 `ACCOUNT_HAS_HEALTH_DATA` when the account already has health data; nothing moves and the anonymous secret keeps working, so clients can offer to keep using the guest session or export it. After a successful link the anonymous secret stops working.',
   })
   @ApiOkResponse({ type: LinkResultDto })
   @ApiErrors(400, 404, 409)

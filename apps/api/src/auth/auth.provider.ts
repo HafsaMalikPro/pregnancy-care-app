@@ -27,6 +27,7 @@ export const authProvider: Provider = {
         CORS_ORIGINS: config.get('CORS_ORIGINS', { infer: true }),
         RATE_LIMIT_ENABLED: config.get('RATE_LIMIT_ENABLED', { infer: true }),
         APP_URL: config.get('APP_URL', { infer: true }),
+        AUTH_COOKIE_SECURE: config.get('AUTH_COOKIE_SECURE', { infer: true }),
       },
       email,
     ),

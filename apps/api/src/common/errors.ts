@@ -1,4 +1,8 @@
-import { ForbiddenException, HttpStatus } from '@nestjs/common';
+import {
+  ConflictException,
+  ForbiddenException,
+  HttpStatus,
+} from '@nestjs/common';
 import type { ErrorCode } from '@preconception/contracts';
 
 /** A 403 with a specific ApiError code, so clients can tell consent from premium gating. */
@@ -8,6 +12,16 @@ export class CodedForbiddenException extends ForbiddenException {
     message: string,
   ) {
     super({ code, message, statusCode: HttpStatus.FORBIDDEN });
+  }
+}
+
+/** A 409 with a specific ApiError code, so clients can choose a recovery path. */
+export class CodedConflictException extends ConflictException {
+  constructor(
+    readonly code: Extract<ErrorCode, 'ACCOUNT_HAS_HEALTH_DATA'>,
+    message: string,
+  ) {
+    super({ code, message, statusCode: HttpStatus.CONFLICT });
   }
 }
 

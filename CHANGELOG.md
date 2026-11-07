@@ -10,3 +10,28 @@
   in `platform.e2e-spec.ts` setup.
 - `turbo.json`: `pnpm dev` now passes shell variables (`RATE_LIMIT_ENABLED`, `EMAIL_PROVIDER`, …)
   through to the API; strict env mode had been dropping them.
+
+### Phase 1 — Security and correctness
+
+- Two-factor sign-in tested end to end (`test/two-factor.e2e-spec.ts`): TOTP, single-use backup
+  codes, wrong codes, codes without the password step, regenerated codes. Backup-code guesses,
+  `verify-password`, `change-password`, 2FA enable/disable and backup-code regeneration now
+  have Better Auth rate limits.
+- Guest linking: a refused link returns `409 ACCOUNT_HAS_HEALTH_DATA` (new `ErrorCode`). Tests
+  cover the success path (secret retired) and the 409 path (nothing moved, secret still works,
+  guest can export, retry into an empty account succeeds).
+- Email verification links now expire after 30 minutes (were 24 hours). New tests: link
+  lifetime, replay has no effect, resend does not reveal whether an address exists, reset
+  token lifetime.
+- Disabled `update-session` (always 400) and `revoke-sessions` (unused); documented with every
+  other disabled auth route in `docs/API_INVENTORY.md`.
+- `PUT /v1/daily-plan/{date}/tasks/{key}` rejects future dates. New e2e suite for owners in
+  UTC+14 and UTC−11: reads report the zone date, and journal, cycle, pregnancy-end and
+  daily-plan writes reject the zone's tomorrow.
+- OpenAPI: removed `POST /v1/auth/get-session` (405 at runtime) and the two disabled routes
+  (96 → 94 paths). New tests compare the documented Nest routes with the live Express router and
+  probe every documented auth operation for 404/405.
+- Per-route write limits: consent changes 30/hour, pregnancy start/re-date/end 20/hour.
+- Production guard: new `AUTH_COOKIE_SECURE` (default on in production and staging; production
+  refuses `false`). An e2e test checks that production session cookies are `__Secure-`,
+  `Secure` and `HttpOnly`.

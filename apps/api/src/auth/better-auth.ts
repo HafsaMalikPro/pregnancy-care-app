@@ -2,7 +2,7 @@ import { betterAuth } from 'better-auth';
 import { prismaAdapter } from 'better-auth/adapters/prisma';
 import { bearer, openAPI, twoFactor } from 'better-auth/plugins';
 import { Logger } from '@nestjs/common';
-import type { Env } from '../config/env.js';
+import { type Env, secureCookies } from '../config/env.js';
 import type { PrismaService } from '../database/prisma.service.js';
 import type { EmailMessage, EmailSender } from '../email/email-sender.js';
 import { passwordResetEmail, verificationEmail } from '../email/templates.js';
@@ -30,6 +30,11 @@ export const DISABLED_AUTH_PATHS = [
   '/delete-user/callback',
   '/two-factor/send-otp',
   '/two-factor/verify-otp',
+  // No custom session fields exist, so update-session always answered 400 "No fields to update".
+  '/update-session',
+  // Signs out every device including this one. The website offers "sign out of this device"
+  // (sign-out) and "sign out of other devices" (revoke-other-sessions) instead.
+  '/revoke-sessions',
 ];
 
 /** Need an email provider: off while EMAIL_PROVIDER=none. */
@@ -40,9 +45,13 @@ export const EMAIL_AUTH_PATHS = [
   '/send-verification-email',
 ];
 
-/** Reset links are single use and short lived; verification links last a day. */
+/**
+ * Both kinds of link expire after 30 minutes. Reset tokens are single use (stored hashed,
+ * consumed atomically). Verification tokens are signed and only set `emailVerified`; replaying
+ * one changes nothing and never creates a session.
+ */
 export const RESET_TOKEN_TTL_SECONDS = 30 * 60;
-export const VERIFICATION_TOKEN_TTL_SECONDS = 24 * 60 * 60;
+export const VERIFICATION_TOKEN_TTL_SECONDS = 30 * 60;
 
 export const BLOCKED_AUTH_PREFIXES = [
   '/callback/',
@@ -66,6 +75,7 @@ export type AuthEnv = Pick<
   | 'CORS_ORIGINS'
   | 'RATE_LIMIT_ENABLED'
   | 'APP_URL'
+  | 'AUTH_COOKIE_SECURE'
 >;
 
 const logger = new Logger('Auth');
@@ -100,7 +110,7 @@ export function createAuth(
     database: prismaAdapter(prisma, { provider: 'postgresql' }),
     advanced: {
       database: { generateId: 'uuid' },
-      useSecureCookies: env.NODE_ENV === 'production',
+      useSecureCookies: secureCookies(env),
     },
     emailAndPassword: {
       enabled: true,
@@ -153,6 +163,12 @@ export function createAuth(
         '/sign-in/email': { window: 60, max: 5 },
         '/sign-up/email': { window: 3600, max: 10 },
         '/two-factor/verify-totp': { window: 60, max: 5 },
+        '/two-factor/verify-backup-code': { window: 60, max: 5 },
+        '/two-factor/enable': { window: 3600, max: 10 },
+        '/two-factor/disable': { window: 3600, max: 10 },
+        '/two-factor/generate-backup-codes': { window: 3600, max: 5 },
+        '/change-password': { window: 3600, max: 5 },
+        '/verify-password': { window: 60, max: 5 },
         '/request-password-reset': { window: 3600, max: 5 },
         '/reset-password': { window: 60, max: 5 },
         '/send-verification-email': { window: 3600, max: 5 },

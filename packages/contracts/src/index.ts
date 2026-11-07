@@ -18,6 +18,12 @@ export const ErrorCode = z.enum([
   'PREMIUM_REQUIRED',
   'NOT_FOUND',
   'CONFLICT',
+  /**
+   * 409 on POST /v1/anonymous-sessions/link: the account already holds health data, so the
+   * guest history was not merged. The guest session and its secret stay valid; clients
+   * should offer to keep using the guest session or to export its data.
+   */
+  'ACCOUNT_HAS_HEALTH_DATA',
   'PAYLOAD_TOO_LARGE',
   'RATE_LIMITED',
   'INTERNAL_ERROR',

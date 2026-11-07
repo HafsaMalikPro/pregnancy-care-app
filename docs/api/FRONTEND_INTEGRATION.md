@@ -57,29 +57,39 @@ refresh automatically on use (at most once a day); there is no separate refresh 
 | Route | Notes |
 | --- | --- |
 | `POST /sign-up/email` `{ name, email, password }` | Password 12–128 characters. Signs in immediately |
-| `POST /sign-in/email` `{ email, password, rememberMe? }` | `{ twoFactorRedirect: true }` when TOTP is on: then `POST /two-factor/verify-totp { code }` |
+| `POST /sign-in/email` `{ email, password, rememberMe? }` | `{ twoFactorRedirect: true }` when TOTP is on: then `POST /two-factor/verify-totp { code }` or, with a lost authenticator, `POST /two-factor/verify-backup-code { code }` (single use). Both need the `two_factor` cookie from this response (10 minutes) |
 | `POST /sign-out` | |
 | `GET /get-session`, `GET /list-sessions`, `POST /revoke-session { token }`, `POST /revoke-other-sessions` | Device management |
 | `POST /update-user { name }`, `POST /change-password` | |
 | `POST /two-factor/enable \| disable { password }` | |
 | `POST /request-password-reset { email }` | Same response whether or not the address exists. Emails a link to `${APP_URL}/reset-password?token=…` |
 | `POST /reset-password { token, newPassword }` | Token is single use, valid 30 minutes; all sessions are revoked |
-| `GET /verify-email?token=…` | Link sent on sign-up to `${APP_URL}/verify-email?token=…`. Valid 24 hours |
-| `POST /send-verification-email { email }` | Resend the verification link |
+| `GET /verify-email?token=…` | Link sent on sign-up to `${APP_URL}/verify-email?token=…`. Valid 30 minutes; never creates a session |
+| `POST /send-verification-email { email }` | Resend the verification link. Same response whether or not the address exists |
 
 The four email routes return `404` while the deployment has no email provider
 (`EMAIL_PROVIDER=none`). Show those features only if your deployment configures one.
 
-Rate limits on auth (per IP): sign-in 5/min, sign-up 10/hour, TOTP 5/min, password-reset
-requests 5/hour, reset submissions 5/min, verification emails 5/hour. Other routes: 120/min
-per IP; export and deletion 3/hour. A limit returns `429 RATE_LIMITED`.
+Rate limits on auth (per IP): sign-in 5/min, sign-up 10/hour, TOTP and backup codes 5/min,
+password-reset requests 5/hour, reset submissions 5/min, verification emails 5/hour. Other
+routes: 120/min per IP; export and deletion 3/hour; consent changes 30/hour; starting,
+re-dating or ending a pregnancy 20/hour. Full table: `docs/API_INVENTORY.md` ("Rate limits").
+A limit returns `429 RATE_LIMITED`.
+
+`update-session` and `revoke-sessions` are disabled (404): use `sign-out` for this device and
+`revoke-other-sessions` for the rest.
 
 ## Linking a guest to an account
 
 After sign-up or sign-in, `POST /v1/anonymous-sessions/link { secret }` with the account's
 credentials (not the guest header). The move is one transaction. It returns counts of moved
-records. `409 CONFLICT` if the account already has health data (histories are never
-merged); `404` if the secret is unknown, expired or already linked.
+records. `409` with code `ACCOUNT_HAS_HEALTH_DATA` if the account already has health data
+(histories are never merged); `404` if the secret is unknown, expired or already linked.
+
+**Keep the guest secret until the link succeeds.** On 409 nothing has moved and the secret still
+works: offer to keep using the guest data (stay signed in as the guest) or to export it
+(`POST /v1/me/export` with the guest header) before discarding it. On a network error or 5xx,
+keep the secret and retry.
 
 ## Errors
 

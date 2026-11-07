@@ -76,6 +76,42 @@ describe('email and reminder delivery (e2e)', () => {
       expect(me.body.emailVerified).toBe(true);
     });
 
+    it('expires verification links after 30 minutes and a replay changes nothing', async () => {
+      const user = await signUp(app);
+      const token = tokenFrom(
+        (await nextEmail(user.email, 'email_verification')).text,
+      );
+      const claims = JSON.parse(
+        Buffer.from(token.split('.')[1], 'base64url').toString(),
+      ) as { iat: number; exp: number };
+      expect(claims.exp - claims.iat).toBe(30 * 60);
+
+      await http.get('/v1/auth/verify-email').query({ token }).expect(200);
+      const replay = await http.get('/v1/auth/verify-email').query({ token });
+      // No session is ever issued from a verification link.
+      expect(replay.headers['set-cookie'] ?? []).toEqual([]);
+      expect(replay.body.user ?? null).toBeNull();
+    });
+
+    it('resends verification without revealing whether an address exists', async () => {
+      const user = await signUp(app);
+      await nextEmail(user.email, 'email_verification');
+      const nobody = uniqueEmail('nobody');
+      const known = await http
+        .post('/v1/auth/send-verification-email')
+        .send({ email: user.email })
+        .expect(200);
+      const unknown = await http
+        .post('/v1/auth/send-verification-email')
+        .send({ email: nobody })
+        .expect(200);
+      expect(unknown.body).toEqual(known.body);
+      const resent = await nextEmail(user.email, 'email_verification');
+      expect(resent.text).toContain('http://app.test/verify-email?token=');
+      await new Promise((r) => setTimeout(r, 100));
+      expect(mail.sent.some((m) => m.to === nobody)).toBe(false);
+    });
+
     it('rejects a tampered token', async () => {
       await http
         .get('/v1/auth/verify-email')
@@ -103,6 +139,10 @@ describe('email and reminder delivery (e2e)', () => {
       });
       expect(stored.length).toBeGreaterThan(0);
       expect(stored.some((v) => v.identifier.includes(token))).toBe(false);
+      // Valid for 30 minutes.
+      const ttl = stored[0].expiresAt.getTime() - Date.now();
+      expect(ttl).toBeGreaterThan(29 * 60_000);
+      expect(ttl).toBeLessThanOrEqual(30 * 60_000);
 
       // Unknown addresses get the same answer and no email.
       const unknown = await http

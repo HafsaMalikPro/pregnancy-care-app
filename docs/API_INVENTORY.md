@@ -113,20 +113,75 @@ identifiers only, never health values.
 ### Better Auth (`/v1/auth`, enabled)
 
 Public: `POST sign-up/email`, `POST sign-in/email`, `POST two-factor/verify-totp`,
-`POST two-factor/verify-backup-code`, `GET ok`, `GET error`.
-Session: `GET|POST get-session`, `sign-out`, `verify-password`, `change-password`,
-`update-session`, `update-user` (name/image only; role, status and 2FA flags are not writable),
-`GET list-sessions`, `revoke-session`, `revoke-sessions`, `revoke-other-sessions`,
+`POST two-factor/verify-backup-code`, `GET ok`, `GET error`; with an email provider also
+`POST request-password-reset`, `POST reset-password`, `GET verify-email`,
+`POST send-verification-email`.
+Session: `GET get-session`, `sign-out`, `verify-password`, `change-password`,
+`update-user` (name/image only; role, status and 2FA flags are not writable),
+`GET list-sessions`, `revoke-session`, `revoke-other-sessions`,
 `GET list-accounts`, `two-factor/get-totp-uri`, `two-factor/generate-backup-codes`,
 `two-factor/enable`, `two-factor/disable`.
 
 Better Auth responses use Better Auth's own error format, not `ApiError`. This is a known
 exception to ADR 006.
 
-**Disabled (404):** social sign-in, OAuth callbacks, link/unlink account, token refresh,
-access-token, account-info, password reset (3 routes), email verification (2), change-email,
-`delete-user` (2, which would bypass the audited deletion), email/SMS OTP (2). Re-enable them when an
-OAuth provider or an email provider is configured.
+**Two-factor sign-in.** With 2FA on, `sign-in/email` answers `{ twoFactorRedirect: true }` and a
+10-minute `two_factor` cookie, never a session. The second step is `verify-totp` or
+`verify-backup-code` with that cookie. Backup codes are single use; regenerating them
+invalidates the old set. Tested end to end in `test/two-factor.e2e-spec.ts`.
+
+### Disabled auth routes (404)
+
+Listed in `DISABLED_AUTH_PATHS` (`src/auth/better-auth.ts`); a test asserts each returns 404.
+
+| Route | Why it is off |
+| --- | --- |
+| `sign-in/social`, `callback/:id`, `link-social`, `unlink-account`, `refresh-token`, `get-access-token`, `account-info` | No OAuth provider is configured |
+| `reset-password/:token` | The GET redirect variant; the website posts the token to `POST reset-password` instead |
+| `change-email` | Not offered; would need re-verification of the new address |
+| `delete-user`, `delete-user/callback` | Would bypass the audited deletion (`POST /v1/me/deletion`) |
+| `two-factor/send-otp`, `two-factor/verify-otp` | No email/SMS OTP; TOTP and backup codes only |
+| `update-session` | No custom session fields exist; it always answered 400 "No fields to update" |
+| `revoke-sessions` | Signs out every device including the current one; unused. The website uses `sign-out` and `revoke-other-sessions` |
+| `request-password-reset`, `reset-password`, `verify-email`, `send-verification-email` | Off only while `EMAIL_PROVIDER=none` |
+
+`POST get-session` is not documented: Better Auth's schema lists it, but the handler serves GET
+only (405). The OpenAPI merge drops it, and an e2e test probes every documented auth operation
+for 404/405.
+
+## Rate limits
+
+Per client IP. Limits apply only with `RATE_LIMIT_ENABLED=true`, which production requires.
+
+| Scope | Limit | Where |
+| --- | --- | --- |
+| Every Nest route (default) | 120 / minute | `app.module.ts` |
+| `POST /anonymous-sessions`, `POST /anonymous-sessions/link` | 10 / hour | `@Throttle` |
+| `POST /me/export`, `POST /me/deletion` | 3 / hour | `@Throttle` |
+| `POST /me/consents` | 30 / hour | `ThrottleWrite('consentChange')` (append-only history) |
+| `POST /pregnancies`, `PUT /pregnancies/current/dating`, `POST /pregnancies/current/end` | 20 / hour | `ThrottleWrite('pregnancyLifecycle')` (writes history rows) |
+| Better Auth default | 30 / minute | `better-auth.ts` |
+| `sign-in/email` | 5 / minute | |
+| `sign-up/email` | 10 / hour | |
+| `two-factor/verify-totp`, `two-factor/verify-backup-code` | 5 / minute | |
+| `verify-password` | 5 / minute | |
+| `two-factor/enable`, `two-factor/disable` | 10 / hour | |
+| `two-factor/generate-backup-codes`, `change-password` | 5 / hour | |
+| `request-password-reset`, `send-verification-email` | 5 / hour | |
+| `reset-password` | 5 / minute | |
+| `verify-email` | 10 / minute | |
+| Health probes | none | `@SkipThrottle` |
+
+Writes with a per-owner cap (reminders 20, appointments, saved items, shopping items) rely on
+the cap plus the default limit.
+
+## Error codes beyond the status default
+
+| Code | Status | When |
+| --- | --- | --- |
+| `CONSENT_REQUIRED` | 403 | Health write without `health_data_processing` consent |
+| `PREMIUM_REQUIRED` | 403 | Premium content without an entitlement |
+| `ACCOUNT_HAS_HEALTH_DATA` | 409 | `POST /anonymous-sessions/link` into an account that already has health data. Nothing moves and the guest secret keeps working, so the client can offer "keep using guest data" or "export it" |
 
 ## Remaining gaps (not implemented)
 

@@ -1,14 +1,11 @@
-import {
-  ConflictException,
-  Injectable,
-  NotFoundException,
-} from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import type {
   AnonymousSessionCreated,
   Platform,
 } from '@preconception/contracts';
 import { AuditService } from '../audit/audit.service.js';
+import { CodedConflictException } from '../common/errors.js';
 import type { Env } from '../config/env.js';
 import { PrismaService } from '../database/prisma.service.js';
 import {
@@ -113,7 +110,10 @@ export class AnonymousSessionService {
         tx.planTaskCompletion.count({ where: owned }),
       ]);
       if (counts.some((n) => n > 0)) {
-        throw new ConflictException(
+        // Thrown inside the transaction, so the claim above rolls back: the guest secret
+        // keeps working and the client can offer "keep guest data" or "export".
+        throw new CodedConflictException(
+          'ACCOUNT_HAS_HEALTH_DATA',
           'This account already has health data; merging an anonymous history is not supported.',
         );
       }

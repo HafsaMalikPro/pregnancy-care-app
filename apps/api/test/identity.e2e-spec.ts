@@ -180,6 +180,8 @@ describe('Identity and access (e2e)', () => {
       ['get', '/v1/auth/reset-password/some-token'],
       ['post', '/v1/auth/change-email'],
       ['post', '/v1/auth/two-factor/send-otp'],
+      ['post', '/v1/auth/update-session'],
+      ['post', '/v1/auth/revoke-sessions'],
     ] as const)(
       'disables unsupported auth endpoint %s %s (404)',
       async (method, path) => {
@@ -354,12 +356,41 @@ describe('Identity and access (e2e)', () => {
         .send({ periodStart: daysAgo(5) })
         .expect(201);
       const anon = await anonymous(app);
+      await grantHealthConsent(app, anon);
+      await http
+        .post('/v1/cycles')
+        .set(anon)
+        .send({ periodStart: daysAgo(3) })
+        .expect(201);
       const res = await http
         .post('/v1/anonymous-sessions/link')
         .set(user)
         .send({ secret: anon.secret });
       expect(res.status).toBe(409);
+      // A specific code, so the website can offer "keep guest data" or "export".
+      expect(res.body.error.code).toBe('ACCOUNT_HAS_HEALTH_DATA');
+
+      // Nothing moved and the guest secret still works: the claim rolled back.
       await http.get('/v1/me').set(anon).expect(200);
+      const guestCycles = await http.get('/v1/cycles').set(anon).expect(200);
+      expect(guestCycles.body.page.total).toBe(1);
+      const userCycles = await http.get('/v1/cycles').set(user).expect(200);
+      expect(userCycles.body.page.total).toBe(1);
+      const session = await prisma.anonymousSession.findUnique({
+        where: { id: anon.id },
+      });
+      expect(session?.linkedUserId).toBeNull();
+      // The guest can still export before deciding.
+      await http.post('/v1/me/export').set(anon).expect(200);
+
+      // And a retry against an empty account succeeds with the same secret.
+      const fresh = await signUp(app);
+      await http
+        .post('/v1/anonymous-sessions/link')
+        .set(fresh)
+        .send({ secret: anon.secret })
+        .expect(200);
+      await http.get('/v1/me').set(anon).expect(401);
     });
 
     it('returns 404 for an unknown secret and 400 for a malformed one', async () => {

@@ -23,6 +23,7 @@ import { CurrentOwner, Public } from '../auth/auth.decorators.js';
 import type { Owner } from '../auth/owner.js';
 import { PageQueryDto } from '../common/pagination.js';
 import { ApiErrors, ApiOwnerAuth } from '../common/swagger.js';
+import { ThrottleWrite } from '../common/throttle.js';
 import {
   CreatePregnancyDto,
   type DatingDto,
@@ -91,6 +92,7 @@ export class PregnancyController {
   constructor(private readonly pregnancies: PregnancyService) {}
 
   @Post()
+  @ThrottleWrite('pregnancyLifecycle')
   @ApiOperation({
     summary: 'Start tracking a pregnancy',
     description:
@@ -139,6 +141,7 @@ export class PregnancyController {
   }
 
   @Put('current/dating')
+  @ThrottleWrite('pregnancyLifecycle')
   @ApiOperation({
     summary: 'Change the due date',
     description:
@@ -227,6 +230,7 @@ export class PregnancyController {
   }
 
   @Post('current/end')
+  @ThrottleWrite('pregnancyLifecycle')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
     summary: 'End the active pregnancy',
