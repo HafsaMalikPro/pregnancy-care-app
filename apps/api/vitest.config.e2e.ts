@@ -17,8 +17,10 @@ export default defineConfig({
     // Points the suite at TEST_DATABASE_URL and refuses non-local or production databases.
     setupFiles: ['./test/setup-e2e.ts'],
     // Files run in parallel and each signs up users with deliberately slow password hashing;
-    // the defaults (5 s / 10 s) time out under that load on ordinary laptops.
-    testTimeout: 20_000,
-    hookTimeout: 30_000,
+    // the defaults (5 s / 10 s) time out under that load on ordinary laptops. The combined
+    // coverage run (unit + e2e projects at once, instrumented) is slower still: suites whose
+    // beforeAll publishes several content items took over 30 s there.
+    testTimeout: 30_000,
+    hookTimeout: 90_000,
   },
 });

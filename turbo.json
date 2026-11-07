@@ -9,7 +9,12 @@
       "dependsOn": ["^build", "db:generate"],
       "outputs": ["dist/**"]
     },
-    "dev": { "cache": false, "persistent": true, "dependsOn": ["db:generate"] },
+    "dev": {
+      "cache": false,
+      "persistent": true,
+      "dependsOn": ["db:generate"],
+      "passThroughEnv": ["*"]
+    },
     "lint": { "dependsOn": ["^build", "db:generate"] },
     "typecheck": { "dependsOn": ["^build", "db:generate"] },
     "test": { "dependsOn": ["^build", "db:generate"] }
