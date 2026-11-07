@@ -479,11 +479,19 @@ export function ShoppingListPanel() {
       setName("");
     });
   };
-  const toggle = (item: ShoppingItem) =>
-    run(async () => {
-      const u = await api<ShoppingItem>(`/v1/shopping-list/${item.id}`, { method: "PATCH", body: { checked: !item.checked } });
-      list.setData(items.map((i) => (i.id === u.id ? u : i)));
+  // Optimistic: tick immediately, then reconcile with the saved row (or revert on error).
+  const toggle = (item: ShoppingItem) => {
+    list.setData(items.map((i) => (i.id === item.id ? { ...i, checked: !item.checked } : i)));
+    return run(async () => {
+      try {
+        const u = await api<ShoppingItem>(`/v1/shopping-list/${item.id}`, { method: "PATCH", body: { checked: !item.checked } });
+        list.setData(items.map((i) => (i.id === u.id ? u : i)));
+      } catch (err) {
+        list.setData(items);
+        throw err;
+      }
     });
+  };
   const remove = (item: ShoppingItem) =>
     run(async () => {
       await api(`/v1/shopping-list/${item.id}`, { method: "DELETE" });

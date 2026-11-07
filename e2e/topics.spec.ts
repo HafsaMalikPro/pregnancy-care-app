@@ -89,7 +89,12 @@ test("signed-in planning: meal plan, hydration, shopping, exercise, sleep, appoi
   const shop = panel("Shopping list");
   await shop.getByRole("button", { name: "Add this week's meal plan" }).click();
   await expect(shop.getByText(/Added \d+ items? from this week/)).toBeVisible();
-  await shop.getByRole("checkbox").first().check();
+  // Checked items move to the end of the list, so pin the item by its id rather than by
+  // position, then click and assert (check() also asserted synchronously).
+  const itemId = await shop.getByRole("checkbox").first().getAttribute("id");
+  const item = shop.locator(`[id="${itemId}"]`);
+  await item.click();
+  await expect(item).toBeChecked();
   await shop.getByRole("button", { name: /Clear 1 checked/ }).click();
   await expect(shop.getByRole("button", { name: /Clear \d+ checked/ })).toHaveCount(0);
 
