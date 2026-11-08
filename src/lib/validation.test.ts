@@ -9,7 +9,7 @@ describe("signupProblems", () => {
     expect(signupProblems({ name: " ", email: "nope", password: "short" })).toEqual([
       "Enter your name.",
       "Enter a valid email address.",
-      "Use at least 12 characters for your password.",
+      "Use at least 8 characters for your password.",
     ]);
   });
 });

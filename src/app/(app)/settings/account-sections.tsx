@@ -22,6 +22,7 @@ import { formatDate } from "@/lib/dates";
 import { STAFF_ROLES, humanize } from "@/lib/labels";
 import type { ConsentState, Entitlement, PrivacyJob, Profile } from "@/lib/types";
 import { useApi } from "@/lib/use-api";
+import { PASSWORD_MIN_LENGTH } from "@/lib/validation";
 
 type Message = { tone: "success" | "danger"; text: string } | null;
 
@@ -506,7 +507,7 @@ function PasswordCard() {
         <Field label="Current password">
           <Input type="password" autoComplete="current-password" required value={currentPassword} onChange={(e) => setCurrent(e.target.value)} />
         </Field>
-        <Field label="New password" hint="At least 12 characters">
+        <Field label="New password" hint={`At least ${PASSWORD_MIN_LENGTH} characters`}>
           <Input type="password" autoComplete="new-password" required minLength={12} value={newPassword} onChange={(e) => setNew(e.target.value)} />
         </Field>
         {message && (

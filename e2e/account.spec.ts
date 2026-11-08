@@ -7,7 +7,7 @@ test("sign-up validates the password before calling the API", async ({ page }) =
   await page.getByLabel("Email address").fill(uniqueEmail());
   await page.getByLabel("Password", { exact: true }).fill("short");
   await page.getByRole("button", { name: "Create account" }).click();
-  await expect(page.getByRole("alert").filter({ hasText: "at least 12 characters" })).toBeVisible();
+  await expect(page.getByRole("alert").filter({ hasText: "at least 8 characters" })).toBeVisible();
 });
 
 test("onboarding validates dates, lets you edit, and saves only on confirm", async ({ page }) => {

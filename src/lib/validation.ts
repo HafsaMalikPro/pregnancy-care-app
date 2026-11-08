@@ -1,7 +1,7 @@
 /** Client-side checks that mirror the API's rules, so people see problems before submitting. */
 
 // Mirrors PASSWORD_MIN_LENGTH / maxPasswordLength in the API's Better Auth config.
-export const PASSWORD_MIN_LENGTH = 12;
+export const PASSWORD_MIN_LENGTH = 8;
 export const PASSWORD_MAX_LENGTH = 128;
 
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
