@@ -1,3 +1,4 @@
+import { ThrottleWrite } from '../common/throttle.js';
 import { Body, Controller, Get, Post, Query, Req } from '@nestjs/common';
 import {
   ApiCreatedResponse,
@@ -75,6 +76,7 @@ export class AdminStructuredController {
     private readonly prisma: PrismaService,
   ) {}
 
+  @ThrottleWrite('staffWrite')
   @Post('recipes')
   @Staff('content_editor')
   @ApiOperation({
@@ -92,6 +94,7 @@ export class AdminStructuredController {
     return this.create('recipe', actor, dto, req);
   }
 
+  @ThrottleWrite('staffWrite')
   @Post('activities')
   @Staff('content_editor')
   @ApiOperation({
@@ -109,6 +112,7 @@ export class AdminStructuredController {
     return this.create('activity', actor, dto, req);
   }
 
+  @ThrottleWrite('staffWrite')
   @Post('meal-plans')
   @Staff('content_editor')
   @ApiOperation({
@@ -126,6 +130,7 @@ export class AdminStructuredController {
     return this.create('meal_plan', actor, dto, req);
   }
 
+  @ThrottleWrite('staffWrite')
   @Post('visit-schedules')
   @Staff('content_editor')
   @ApiOperation({
@@ -143,6 +148,7 @@ export class AdminStructuredController {
     return this.create('visit_schedule', actor, dto, req);
   }
 
+  @ThrottleWrite('staffWrite')
   @Post('postpartum-guides')
   @Staff('content_editor')
   @ApiOperation({

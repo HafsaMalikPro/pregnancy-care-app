@@ -1,3 +1,4 @@
+import { ThrottleWrite } from '../common/throttle.js';
 import {
   Body,
   BadRequestException,
@@ -178,6 +179,7 @@ export class RemindersController {
     return rows.map(toDto);
   }
 
+  @ThrottleWrite('ownerWrite')
   @Post()
   @ApiOperation({
     summary: 'Create a reminder',
@@ -223,6 +225,7 @@ export class RemindersController {
     return toDto(row);
   }
 
+  @ThrottleWrite('ownerWrite')
   @Patch(':id')
   @ApiOperation({ summary: 'Update a reminder' })
   @ApiOkResponse({ type: ReminderDto })
@@ -267,6 +270,7 @@ export class RemindersController {
     return toDto(row);
   }
 
+  @ThrottleWrite('ownerWrite')
   @Delete(':id')
   @HttpCode(HttpStatus.NO_CONTENT)
   @ApiOperation({ summary: 'Delete a reminder' })

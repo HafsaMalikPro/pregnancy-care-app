@@ -1,3 +1,4 @@
+import { ThrottleWrite } from '../common/throttle.js';
 import {
   Body,
   Controller,
@@ -90,6 +91,7 @@ export class AdminArticlesController {
     return article;
   }
 
+  @ThrottleWrite('staffWrite')
   @Post()
   @Staff('content_editor')
   @ApiOperation({
@@ -107,6 +109,7 @@ export class AdminArticlesController {
     return this.content.createDraft(actor, dto, req.requestId);
   }
 
+  @ThrottleWrite('staffWrite')
   @Patch(':id')
   @Staff('content_editor')
   @ApiOperation({
@@ -124,6 +127,7 @@ export class AdminArticlesController {
     return this.content.updateDraft(actor, id, dto, req.requestId);
   }
 
+  @ThrottleWrite('staffWrite')
   @Post(':id/submit')
   @Staff('content_editor')
   @HttpCode(HttpStatus.OK)
@@ -138,6 +142,7 @@ export class AdminArticlesController {
     return this.content.submit(actor, id, req.requestId);
   }
 
+  @ThrottleWrite('staffWrite')
   @Post(':id/reviews')
   @Staff('clinical_reviewer')
   @ApiOperation({
@@ -158,6 +163,7 @@ export class AdminArticlesController {
     return this.content.review(actor, id, dto, req.requestId);
   }
 
+  @ThrottleWrite('staffWrite')
   @Post(':id/publish')
   @Staff('content_editor')
   @HttpCode(HttpStatus.OK)
@@ -176,6 +182,7 @@ export class AdminArticlesController {
     return this.content.publish(actor, id, req.requestId);
   }
 
+  @ThrottleWrite('staffWrite')
   @Post(':id/archive')
   @Staff('content_editor')
   @HttpCode(HttpStatus.OK)

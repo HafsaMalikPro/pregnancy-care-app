@@ -1,3 +1,4 @@
+import { ThrottleWrite } from '../common/throttle.js';
 import {
   BadRequestException,
   Controller,
@@ -52,6 +53,7 @@ export class SavedController {
     return rows.map(toSaved);
   }
 
+  @ThrottleWrite('ownerWrite')
   @Put(':kind/:slug')
   @ApiOperation({
     summary: 'Save an item',
@@ -88,6 +90,7 @@ export class SavedController {
     return toSaved(row);
   }
 
+  @ThrottleWrite('ownerWrite')
   @Delete(':kind/:slug')
   @HttpCode(HttpStatus.NO_CONTENT)
   @ApiOperation({ summary: 'Remove a saved item' })

@@ -1,3 +1,4 @@
+import { ThrottleWrite } from '../common/throttle.js';
 import { Body, Controller, Post, Req } from '@nestjs/common';
 import { ApiCreatedResponse, ApiOperation, ApiTags } from '@nestjs/swagger';
 import type { Request } from 'express';
@@ -18,6 +19,7 @@ import { AdminArticleDto, CreateWeekGuideDto } from './admin.dto.js';
 export class AdminWeekGuidesController {
   constructor(private readonly content: AdminContentService) {}
 
+  @ThrottleWrite('staffWrite')
   @Post()
   @Staff('content_editor')
   @ApiOperation({

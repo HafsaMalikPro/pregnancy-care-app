@@ -1,3 +1,4 @@
+import { ThrottleWrite } from '../common/throttle.js';
 import {
   Body,
   Controller,
@@ -146,6 +147,7 @@ export class CyclesController {
     return this.cycles.get(owner, id);
   }
 
+  @ThrottleWrite('ownerWrite')
   @Post()
   @ApiOperation({
     summary: 'Record a period',
@@ -158,6 +160,7 @@ export class CyclesController {
     return this.cycles.create(owner, dto);
   }
 
+  @ThrottleWrite('ownerWrite')
   @Patch(':id')
   @ApiOperation({
     summary: 'Correct a period',
@@ -173,6 +176,7 @@ export class CyclesController {
     return this.cycles.update(owner, id, dto);
   }
 
+  @ThrottleWrite('ownerWrite')
   @Delete(':id')
   @HttpCode(HttpStatus.NO_CONTENT)
   @ApiOperation({ summary: 'Delete a period' })

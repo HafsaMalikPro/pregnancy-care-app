@@ -1,3 +1,4 @@
+import { ThrottleWrite } from '../common/throttle.js';
 import {
   Body,
   ConflictException,
@@ -52,6 +53,7 @@ export class AdminTasksController {
     });
   }
 
+  @ThrottleWrite('staffWrite')
   @Post()
   @Staff('content_editor')
   @ApiOperation({
@@ -87,6 +89,7 @@ export class AdminTasksController {
     });
   }
 
+  @ThrottleWrite('staffWrite')
   @Patch(':id')
   @Staff('content_editor')
   @ApiOperation({
@@ -113,6 +116,7 @@ export class AdminTasksController {
     });
   }
 
+  @ThrottleWrite('staffWrite')
   @Post(':id/publish')
   @Staff('clinical_reviewer')
   @HttpCode(HttpStatus.OK)
@@ -137,6 +141,7 @@ export class AdminTasksController {
     );
   }
 
+  @ThrottleWrite('staffWrite')
   @Post(':id/archive')
   @Staff('content_editor')
   @HttpCode(HttpStatus.OK)

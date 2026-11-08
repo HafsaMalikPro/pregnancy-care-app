@@ -1,3 +1,4 @@
+import { ThrottleWrite } from '../common/throttle.js';
 import {
   BadRequestException,
   Body,
@@ -206,6 +207,7 @@ export class DailyLogsController {
     return toDto(row);
   }
 
+  @ThrottleWrite('ownerWrite')
   @Put(':date')
   @ApiParam({ name: 'date', format: 'date' })
   @ApiOperation({
@@ -256,6 +258,7 @@ export class DailyLogsController {
     return toDto(row);
   }
 
+  @ThrottleWrite('ownerWrite')
   @Delete(':date')
   @HttpCode(HttpStatus.NO_CONTENT)
   @ApiParam({ name: 'date', format: 'date' })

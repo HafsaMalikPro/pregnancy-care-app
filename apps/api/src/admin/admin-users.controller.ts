@@ -1,3 +1,4 @@
+import { ThrottleWrite } from '../common/throttle.js';
 import {
   Body,
   Controller,
@@ -64,6 +65,7 @@ export class AdminUsersController {
     return { items: rows.map(toAdminUser), page: pageInfo(q, total) };
   }
 
+  @ThrottleWrite('staffWrite')
   @Patch('users/:id/staff-role')
   @Staff('administrator')
   @ApiOperation({

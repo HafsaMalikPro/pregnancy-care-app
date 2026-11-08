@@ -1,3 +1,4 @@
+import { ThrottleWrite } from '../common/throttle.js';
 import {
   BadRequestException,
   Body,
@@ -82,6 +83,7 @@ export class ExerciseController {
     return rows.map(toLog);
   }
 
+  @ThrottleWrite('ownerWrite')
   @Put('activity-logs/:date/:activitySlug')
   @ApiOperation({
     summary: 'Mark an activity as done',
@@ -145,6 +147,7 @@ export class ExerciseController {
     return toLog(row);
   }
 
+  @ThrottleWrite('ownerWrite')
   @Delete('activity-logs/:date/:activitySlug')
   @HttpCode(HttpStatus.NO_CONTENT)
   @ApiOperation({ summary: 'Unmark an activity' })

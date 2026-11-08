@@ -1,3 +1,4 @@
+import { ThrottleWrite } from '../common/throttle.js';
 import { Body, Controller, Get, Param, Put, Query } from '@nestjs/common';
 import { ApiOkResponse, ApiOperation, ApiTags } from '@nestjs/swagger';
 import type { DailyPlan, DailyPlanDay } from '@preconception/contracts';
@@ -34,6 +35,7 @@ export class DailyPlanController {
     return this.plans.plan(owner, q);
   }
 
+  @ThrottleWrite('ownerWrite')
   @Put(':date/tasks/:key')
   @ApiOperation({
     summary: 'Mark a plan task done or not done',

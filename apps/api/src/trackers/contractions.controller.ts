@@ -131,6 +131,7 @@ export class ContractionsController {
     return this.withContext(owner, date, row.id);
   }
 
+  @ThrottleWrite('ownerWrite')
   @Post(':id/stop')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
@@ -155,6 +156,7 @@ export class ContractionsController {
     return this.withContext(owner, row.date.toISOString().slice(0, 10), row.id);
   }
 
+  @ThrottleWrite('ownerWrite')
   @Delete(':id')
   @HttpCode(HttpStatus.NO_CONTENT)
   @ApiOperation({ summary: 'Delete a contraction' })

@@ -1,3 +1,4 @@
+import { ThrottleWrite } from '../common/throttle.js';
 import {
   Body,
   Controller,
@@ -159,6 +160,7 @@ export class ReadinessController {
     );
   }
 
+  @ThrottleWrite('ownerWrite')
   @Put(':taskId/progress')
   @ApiOperation({
     summary: 'Mark a task done or not, with an optional private note',

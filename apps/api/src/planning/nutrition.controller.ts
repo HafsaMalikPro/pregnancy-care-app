@@ -1,3 +1,4 @@
+import { ThrottleWrite } from '../common/throttle.js';
 import {
   BadRequestException,
   Body,
@@ -110,6 +111,7 @@ export class NutritionController {
     return rows.map(toMealLog);
   }
 
+  @ThrottleWrite('ownerWrite')
   @Put('meal-logs/:date/:slot/:recipeSlug')
   @ApiOperation({
     summary: 'Mark a meal as eaten',
@@ -140,6 +142,7 @@ export class NutritionController {
     return toMealLog(row);
   }
 
+  @ThrottleWrite('ownerWrite')
   @Delete('meal-logs/:date/:slot/:recipeSlug')
   @HttpCode(HttpStatus.NO_CONTENT)
   @ApiOperation({ summary: 'Unmark a meal' })
@@ -174,6 +177,7 @@ export class NutritionController {
     return rows.map(toShopping);
   }
 
+  @ThrottleWrite('ownerWrite')
   @Post('shopping-list')
   @ApiOperation({
     summary: 'Add an item',
@@ -202,6 +206,7 @@ export class NutritionController {
     return toShopping(row);
   }
 
+  @ThrottleWrite('ownerWrite')
   @Post('shopping-list/from-meal-plan')
   @ApiOperation({
     summary: 'Add the ingredients of my meal plan',
@@ -254,6 +259,7 @@ export class NutritionController {
     return { added: count, items: await this.shopping(owner) };
   }
 
+  @ThrottleWrite('ownerWrite')
   @Patch('shopping-list/:id')
   @ApiOperation({ summary: 'Check or uncheck an item, or change its quantity' })
   @ApiOkResponse({ type: ShoppingItemDto })
@@ -277,6 +283,7 @@ export class NutritionController {
     );
   }
 
+  @ThrottleWrite('ownerWrite')
   @Delete('shopping-list/:id')
   @HttpCode(HttpStatus.NO_CONTENT)
   @ApiOperation({ summary: 'Remove an item' })
@@ -292,6 +299,7 @@ export class NutritionController {
     if (count === 0) throw new NotFoundException('Item not found.');
   }
 
+  @ThrottleWrite('ownerWrite')
   @Delete('shopping-list')
   @HttpCode(HttpStatus.NO_CONTENT)
   @ApiOperation({ summary: 'Remove all checked items' })

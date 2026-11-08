@@ -39,6 +39,20 @@ const EnvSchema = z.object({
   DATABASE_POOL_MAX: z.coerce.number().int().positive().default(10),
   /** How long a request waits for a free pool connection before failing (0 = forever). */
   DATABASE_POOL_TIMEOUT_MS: z.coerce.number().int().nonnegative().default(5000),
+  /** Postgres cancels any statement running longer than this (ms). */
+  DATABASE_STATEMENT_TIMEOUT_MS: z.coerce
+    .number()
+    .int()
+    .min(100)
+    .max(120_000)
+    .default(10_000),
+  /** The HTTP server drops a client that takes longer than this to send its request (ms). */
+  REQUEST_TIMEOUT_MS: z.coerce
+    .number()
+    .int()
+    .min(1000)
+    .max(120_000)
+    .default(15_000),
   /** Signs and encrypts Better Auth sessions and 2FA secrets. At least 32 random characters. */
   BETTER_AUTH_SECRET: z.string().min(32),
   /** Public base URL of this API, e.g. https://api.example.com. */

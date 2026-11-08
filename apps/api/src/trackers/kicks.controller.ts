@@ -123,6 +123,7 @@ export class KickCountsController {
     };
   }
 
+  @ThrottleWrite('ownerWrite')
   @Put('threshold')
   @ApiOperation({
     summary: 'Save the threshold your clinician gave you',
@@ -149,6 +150,7 @@ export class KickCountsController {
     return thresholdOf(row)!;
   }
 
+  @ThrottleWrite('ownerWrite')
   @Delete('threshold')
   @HttpCode(HttpStatus.NO_CONTENT)
   @ApiOperation({ summary: 'Remove the threshold' })
@@ -213,6 +215,7 @@ export class KickCountsController {
     );
   }
 
+  @ThrottleWrite('ownerWrite')
   @Post('sessions/:id/kicks')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
@@ -249,6 +252,7 @@ export class KickCountsController {
     );
   }
 
+  @ThrottleWrite('ownerWrite')
   @Post('sessions/:id/stop')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
@@ -275,6 +279,7 @@ export class KickCountsController {
     );
   }
 
+  @ThrottleWrite('ownerWrite')
   @Delete('sessions/:id')
   @HttpCode(HttpStatus.NO_CONTENT)
   @ApiOperation({ summary: 'Delete a session' })

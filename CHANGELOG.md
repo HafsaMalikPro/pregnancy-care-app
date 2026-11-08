@@ -4,6 +4,22 @@
 
 Threat model: `docs/THREAT_MODEL.md`. Controls and tests: `docs/SECURITY_CHECKLIST.md`.
 
+### Hardening phase 5 — Rate limits and resource protection
+
+- Every write route now has its own limit. New `ownerWrite` (60/min) covers 36 owner writes;
+  new `staffWrite` (60/min) covers 17 admin writes. A reflection test fails on any new write
+  route without one.
+- Postgres `statement_timeout` and `idle_in_transaction_session_timeout` come from
+  `DATABASE_STATEMENT_TIMEOUT_MS` (default 10 s). HTTP `requestTimeout` comes from
+  `REQUEST_TIMEOUT_MS` (default 15 s), with a 10 s header timeout.
+- Tests:
+  - owner-write limit (61st write is 429, while reads still work);
+  - page size capped at 100 on every list endpoint;
+  - server timeouts;
+  - a 5 s query is cancelled under a 500 ms limit, and the pool still works afterwards.
+- The `.env.example` secret check now ignores variable names. It still catches a planted
+  secret.
+
 ### Hardening phase 4 — Transport, headers and CORS
 
 - Helmet 8.3.0 on every response:

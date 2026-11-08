@@ -1,3 +1,4 @@
+import { ThrottleWrite } from '../common/throttle.js';
 import {
   BadRequestException,
   Body,
@@ -70,6 +71,7 @@ export class AppointmentsController {
     return rows.map(toAppointment);
   }
 
+  @ThrottleWrite('ownerWrite')
   @Post()
   @ApiOperation({
     summary: 'Add an appointment',
@@ -121,6 +123,7 @@ export class AppointmentsController {
     return toAppointment(await this.find(owner, id));
   }
 
+  @ThrottleWrite('ownerWrite')
   @Patch(':id')
   @ApiOperation({
     summary: 'Change an appointment',
@@ -150,6 +153,7 @@ export class AppointmentsController {
     return toAppointment(row);
   }
 
+  @ThrottleWrite('ownerWrite')
   @Delete(':id')
   @HttpCode(HttpStatus.NO_CONTENT)
   @ApiOperation({ summary: 'Delete an appointment' })

@@ -128,6 +128,7 @@ export class PregnancyController {
     return this.pregnancies.current(owner);
   }
 
+  @ThrottleWrite('ownerWrite')
   @Patch('current')
   @ApiOperation({
     summary: 'Update pregnancy details',
@@ -215,6 +216,7 @@ export class PregnancyController {
     return this.pregnancies.birthPreferences(owner);
   }
 
+  @ThrottleWrite('ownerWrite')
   @Put('current/birth-preferences')
   @ApiOperation({
     summary: 'Save birth preferences',

@@ -1,3 +1,4 @@
+import { ThrottleWrite } from '../common/throttle.js';
 import {
   BadRequestException,
   Body,
@@ -138,6 +139,7 @@ export class WeightController {
     };
   }
 
+  @ThrottleWrite('ownerWrite')
   @Put(':date')
   @ApiOperation({
     summary: 'Save the weight for a day',
@@ -178,6 +180,7 @@ export class WeightController {
     return toEntry(row);
   }
 
+  @ThrottleWrite('ownerWrite')
   @Delete(':date')
   @HttpCode(HttpStatus.NO_CONTENT)
   @ApiOperation({ summary: 'Delete the weight for a day' })

@@ -17,6 +17,14 @@ export class PrismaService extends PrismaClient implements OnModuleDestroy {
         connectionTimeoutMillis: config.get('DATABASE_POOL_TIMEOUT_MS', {
           infer: true,
         }),
+        // A runaway query is cancelled by Postgres instead of holding a connection.
+        statement_timeout: config.get('DATABASE_STATEMENT_TIMEOUT_MS', {
+          infer: true,
+        }),
+        idle_in_transaction_session_timeout: config.get(
+          'DATABASE_STATEMENT_TIMEOUT_MS',
+          { infer: true },
+        ),
       }),
       // Query logging is deliberately off: queries carry health data as parameters.
       log: ['warn', 'error'],

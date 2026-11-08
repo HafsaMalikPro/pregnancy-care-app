@@ -73,7 +73,10 @@ describe('.env.example', () => {
     }
     // No long random-looking tokens anywhere: 32+ base64/hex characters in a row that mix
     // letters and digits (section dividers and prose don't).
-    const tokens = text.match(/[A-Za-z0-9+/=_]{32,}/g) ?? [];
+    // Variable names (UPPER_SNAKE) are removed first: a long name next to a number is not a
+    // secret.
+    const scrubbed = text.replace(/\b[A-Z][A-Z0-9_]{2,}\b=?/g, ' ');
+    const tokens = scrubbed.match(/[A-Za-z0-9+/=_]{32,}/g) ?? [];
     expect(tokens.filter((t) => /[0-9]/.test(t) && /[A-Za-z]/.test(t))).toEqual(
       [],
     );

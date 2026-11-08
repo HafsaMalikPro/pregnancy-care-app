@@ -1,3 +1,4 @@
+import { ThrottleWrite } from '../common/throttle.js';
 import {
   BadRequestException,
   Body,
@@ -244,6 +245,7 @@ export class ProfileController {
     return row ? toProfile(row) : DEFAULT_PROFILE;
   }
 
+  @ThrottleWrite('ownerWrite')
   @Put()
   @ApiOperation({
     summary: 'Create or replace profile',

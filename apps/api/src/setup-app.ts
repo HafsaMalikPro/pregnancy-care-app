@@ -54,6 +54,12 @@ export async function setupApp(app: INestApplication): Promise<void> {
   app.useGlobalPipes(createValidationPipe());
   app.enableShutdownHooks();
 
+  // Slow-client protection: the whole request (headers and body) must arrive in time.
+  const server = app.getHttpServer() as import('node:http').Server;
+  const requestTimeout = config.get('REQUEST_TIMEOUT_MS', { infer: true });
+  server.requestTimeout = requestTimeout;
+  server.headersTimeout = Math.min(10_000, requestTimeout);
+
   if (config.get('NODE_ENV', { infer: true }) !== 'production') {
     SwaggerModule.setup('docs', app, await buildOpenApiDocument(app), {
       jsonDocumentUrl: 'docs/openapi.json',

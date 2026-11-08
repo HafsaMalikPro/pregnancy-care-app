@@ -164,6 +164,10 @@ The client IP is the socket address unless `TRUST_PROXY` names trusted hops; a c
 | `POST /me/export`, `POST /me/deletion` | 3 / hour | `@Throttle` |
 | `POST /me/consents` | 30 / hour | `ThrottleWrite('consentChange')` (append-only history) |
 | `POST /pregnancies`, `PUT /pregnancies/current/dating`, `POST /pregnancies/current/end` | 20 / hour | `ThrottleWrite('pregnancyLifecycle')` (writes history rows) |
+| Symptom checks (`POST /symptom-checks`) | 30 / hour | `ThrottleWrite('symptomCheck')` |
+| Kick-count and contraction sessions (start) | 120 / hour | `ThrottleWrite('trackerSession')` |
+| Every other owner write (journal, meals, activities, shopping list, reminders, appointments, saved items, weight, cycles, profile, plan ticks, checklist, kick taps, thresholds) | 60 / minute | `ThrottleWrite('ownerWrite')` |
+| Every staff write (`/admin/*` POST, PATCH) | 60 / minute | `ThrottleWrite('staffWrite')` |
 | Better Auth default | 30 / minute | `better-auth.ts` |
 | `sign-in/email` | 5 / minute | |
 | `sign-up/email` | 10 / hour | |
@@ -186,6 +190,14 @@ Sign-in lockout (`src/auth/sign-in-throttle.ts`), on top of the limits above:
 A locked sign-in answers 429 `SIGN_IN_LOCKED`. A successful sign-in clears the account counter.
 Two-factor codes have Better Auth's own per-account failure lockout and a 5-try cap per
 sign-in attempt.
+
+`test/security/rate-limit.e2e-spec.ts` fails if any write route lacks its own limit
+(the one exception, `DELETE /anonymous-sessions/current`, is listed there with its reason).
+
+Resource limits: request bodies 100 kB (413); JSON bodies only (415); page size at most 100
+on every list (400 above); the whole request must arrive within `REQUEST_TIMEOUT_MS`
+(15 s, headers within 10 s); Postgres cancels statements and idle transactions after
+`DATABASE_STATEMENT_TIMEOUT_MS` (10 s).
 
 Writes with a per-owner cap (reminders 20, appointments, saved items, shopping items) rely on
 the cap plus the default limit.
