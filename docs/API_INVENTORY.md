@@ -144,14 +144,18 @@ Listed in `DISABLED_AUTH_PATHS` (`src/auth/better-auth.ts`); a test asserts each
 | `update-session` | No custom session fields exist; it always answered 400 "No fields to update" |
 | `revoke-sessions` | Signs out every device including the current one; unused. The website uses `sign-out` and `revoke-other-sessions` |
 | `request-password-reset`, `reset-password`, `verify-email`, `send-verification-email` | Off only while `EMAIL_PROVIDER=none` |
+| `open-api/generate-schema` | The openAPI plugin's schema endpoint. `/docs` is built in-process; over HTTP it would publish the auth schema in production, where `/docs` is off |
 
 `POST get-session` is not documented: Better Auth's schema lists it, but the handler serves GET
 only (405). The OpenAPI merge drops it, and an e2e test probes every documented auth operation
-for 404/405.
+for 404/405. `test/security/auth.e2e-spec.ts` checks the reverse: every Better Auth endpoint
+that is not in the OpenAPI document answers 404 (or 405 for an undocumented method).
 
 ## Rate limits
 
 Per client IP. Limits apply only with `RATE_LIMIT_ENABLED=true`, which production requires.
+The client IP is the socket address unless `TRUST_PROXY` names trusted hops; a client-sent
+`X-Forwarded-For` is never trusted on its own (Better Auth reads only the IP the API resolved).
 
 | Scope | Limit | Where |
 | --- | --- | --- |
@@ -171,6 +175,17 @@ Per client IP. Limits apply only with `RATE_LIMIT_ENABLED=true`, which productio
 | `reset-password` | 5 / minute | |
 | `verify-email` | 10 / minute | |
 | Health probes | none | `@SkipThrottle` |
+
+Sign-in lockout (`src/auth/sign-in-throttle.ts`), on top of the limits above:
+
+| Key | Locks after | Lock length |
+| --- | --- | --- |
+| Account (digest of the submitted email, registered or not) | 5 failures in 15 minutes | 1 minute, doubling per further failure, up to 30 minutes. Always on |
+| IP | 50 failures in 15 minutes | 15 minutes, doubling, up to 2 hours. Off with `RATE_LIMIT_ENABLED=false` |
+
+A locked sign-in answers 429 `SIGN_IN_LOCKED`. A successful sign-in clears the account counter.
+Two-factor codes have Better Auth's own per-account failure lockout and a 5-try cap per
+sign-in attempt.
 
 Writes with a per-owner cap (reminders 20, appointments, saved items, shopping items) rely on
 the cap plus the default limit.

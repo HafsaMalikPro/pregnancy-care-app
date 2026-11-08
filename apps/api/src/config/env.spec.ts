@@ -1,4 +1,9 @@
-import { isExactOrigin, secureCookies, validateEnv } from './env.js';
+import {
+  isExactOrigin,
+  isProxyAddress,
+  secureCookies,
+  validateEnv,
+} from './env.js';
 
 describe('validateEnv', () => {
   const base = {
@@ -186,6 +191,34 @@ describe('validateEnv', () => {
           CORS_ORIGINS: `http://localhost:3000,${origin}`,
         }),
       ).toThrow('Invalid environment configuration: CORS_ORIGINS.1');
+    });
+  });
+
+  describe('TRUST_PROXY', () => {
+    it('defaults to false and accepts hop counts and address lists', () => {
+      expect(validateEnv(base).TRUST_PROXY).toBe(false);
+      expect(validateEnv({ ...base, TRUST_PROXY: '1' }).TRUST_PROXY).toBe(1);
+      expect(
+        validateEnv({
+          ...base,
+          TRUST_PROXY: '10.0.0.0/8, loopback, 2001:db8::1',
+        }).TRUST_PROXY,
+      ).toEqual(['10.0.0.0/8', 'loopback', '2001:db8::1']);
+    });
+
+    it.each(['true', '0', '11', '10.0.0.0/33', 'not-an-ip', '1.2.3.4/8/9'])(
+      'refuses %s (trusting any hop would let clients spoof their IP)',
+      (value) => {
+        expect(() => validateEnv({ ...base, TRUST_PROXY: value })).toThrow(
+          'Invalid environment configuration: TRUST_PROXY',
+        );
+      },
+    );
+
+    it('validates proxy addresses', () => {
+      expect(isProxyAddress('192.168.1.10')).toBe(true);
+      expect(isProxyAddress('::1/128')).toBe(true);
+      expect(isProxyAddress('256.1.1.1')).toBe(false);
     });
   });
 });

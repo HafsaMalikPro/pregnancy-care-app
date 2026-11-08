@@ -115,6 +115,18 @@ model AuthAccount {
   @@map("auth_accounts")
 }
 
+/// Sign-in lockout counters. `key` is "acct:<sha256 of email>" or "ip:<address>".
+model AuthThrottle {
+  key             String    @id
+  failures        Int       @default(0)
+  windowStartedAt DateTime  @default(now()) @map("window_started_at") @db.Timestamptz
+  lockedUntil     DateTime? @map("locked_until") @db.Timestamptz
+  updatedAt       DateTime  @default(now()) @map("updated_at") @db.Timestamptz
+
+  @@index([updatedAt])
+  @@map("auth_throttles")
+}
+
 model AuthVerification {
   id         String   @id @default(uuid(7)) @db.Uuid
   identifier String

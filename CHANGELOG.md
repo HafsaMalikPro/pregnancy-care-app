@@ -1,5 +1,34 @@
 # Changelog
 
+## 2026-11-08 — Production security hardening
+
+Threat model: `docs/THREAT_MODEL.md`. Controls and tests: `docs/SECURITY_CHECKLIST.md`.
+
+### Hardening phase 1 — Authentication and sessions
+
+- **Fixed: rate limits could be bypassed by spoofing `X-Forwarded-For`.** Better Auth trusted
+  the header as sent. New `TRUST_PROXY` (default `false`, `true` refused) sets Express
+  `trust proxy`; the resolved IP is passed to Better Auth in a header the API overwrites on
+  every request.
+- **Fixed: `GET /v1/auth/open-api/generate-schema` was public in production.** Disabled; `/docs`
+  still builds the auth schema in-process.
+- Passwords: scrypt N=2^15, r=8, p=3 (an OWASP equal-strength option; Better Auth's default was
+  a third of that work) with constant-time comparison. Legacy hashes still verify and are
+  upgraded on the next sign-in. Breached passwords (bundled NCSC list, 1,197 entries of 12+
+  characters) are refused on sign-up, change and reset (`PASSWORD_COMPROMISED`). Optional
+  `PASSWORD_BREACH_CHECK=hibp` adds the Have I Been Pwned k-anonymity check.
+- Sign-in lockout per account (5 failures in 15 min, doubling to 30 min; also for unknown
+  emails, so no enumeration) and per IP (50 failures, doubling to 2 h). New table
+  `auth_throttles` (migration `20261108120000_auth_hardening`).
+- Sessions: 7-day idle timeout, 30-day absolute cap enforced by a database trigger,
+  `SameSite=Lax` and `HttpOnly` set explicitly. A password change always revokes other sessions
+  and invalidates outstanding reset links.
+- CSRF: cookie-authenticated writes (Nest and Better Auth routes) need an allowed `Origin` or
+  `Referer`. Bearer and anonymous credentials are unaffected.
+- Two-factor challenge cookie lasts 5 minutes (was 10).
+- New `test/security/` suites (auth, rate-limit, trust-proxy) and unit tests for hashing,
+  lockout, CSRF and `TRUST_PROXY`. Unit + e2e 798/798, statements 97.21%.
+
 ## 2026-11-07
 
 ### Phase 0 — Baseline

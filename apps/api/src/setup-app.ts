@@ -5,6 +5,8 @@ import { toNodeHandler } from 'better-auth/node';
 import type { Express, NextFunction, Request, Response } from 'express';
 import { AUTH, type Auth } from './auth/auth.provider.js';
 import { AUTH_BASE_PATH, BLOCKED_AUTH_PREFIXES } from './auth/better-auth.js';
+import { clientIpMiddleware } from './auth/client-ip.js';
+import { csrfMiddleware } from './common/middleware/csrf.middleware.js';
 import { requestIdMiddleware } from './common/middleware/request-id.middleware.js';
 import { createValidationPipe } from './common/validation.js';
 import type { Env } from './config/env.js';
@@ -16,13 +18,18 @@ export async function setupApp(app: INestApplication): Promise<void> {
 
   const express = app.getHttpAdapter().getInstance() as Express;
   express.disable('x-powered-by');
+  // Which proxy hops may set X-Forwarded-For (never "any"). req.ip, the Nest throttler and
+  // Better Auth's limits all use the address this resolves.
+  express.set('trust proxy', config.get('TRUST_PROXY', { infer: true }));
   // Registered before init() adds the body parser, so parser errors get a request id too.
   app.use(requestIdMiddleware);
+  app.use(clientIpMiddleware);
   app.enableCors({
     origin: config.get('CORS_ORIGINS', { infer: true }),
     credentials: true,
     exposedHeaders: ['x-request-id', 'set-auth-token'],
   });
+  app.use(csrfMiddleware(config.get('CORS_ORIGINS', { infer: true })));
   // Parameterised Better Auth routes that disabledPaths cannot match exactly.
   express.use(
     AUTH_BASE_PATH,

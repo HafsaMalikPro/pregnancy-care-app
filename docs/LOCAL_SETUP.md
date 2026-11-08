@@ -128,11 +128,8 @@ loaded into a real environment.
 ## Not configurable yet
 
 These are often expected in this kind of setup, but **the code does not read them**, so they are
-not in `.env.example`:
+not in `.env.example` (`TRUST_PROXY` now exists; see `.env.example`):
 
-- `TRUST_PROXY`: Express `trust proxy` is never set, so behind a reverse proxy the per-IP rate
-  limits see the proxy's address. This needs a code change before deployment behind a load
-  balancer.
 - A field-encryption key: no application-level field encryption exists. Better Auth encrypts
   two-factor secrets with `BETTER_AUTH_SECRET`.
 - A log level: logging is not configurable by environment.

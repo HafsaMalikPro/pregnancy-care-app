@@ -28,6 +28,9 @@ function totp(secret: string, at = Date.now()): string {
   return String(n).padStart(6, '0');
 }
 
+/** Browsers send Origin on every cookie-authenticated POST; the CSRF check requires it. */
+const ORIGIN = 'https://app.example.test';
+
 const cookieHeader = (res: request.Response) =>
   ([] as string[])
     .concat(res.headers['set-cookie'] ?? [])
@@ -39,7 +42,7 @@ describe('Two-factor sign-in, including backup codes (e2e)', () => {
   let http: ReturnType<typeof request>;
 
   beforeAll(async () => {
-    app = await createTestApp();
+    app = await createTestApp({ CORS_ORIGINS: ORIGIN });
     http = request(app.getHttpServer());
   });
 
@@ -97,7 +100,11 @@ describe('Two-factor sign-in, including backup codes (e2e)', () => {
   it('the password alone does not create a session once 2FA is on', async () => {
     const user = await enrolled();
     const pending = await passwordStep(user.email);
-    await http.get('/v1/me').set('Cookie', pending).expect(401);
+    await http
+      .get('/v1/me')
+      .set('Origin', ORIGIN)
+      .set('Cookie', pending)
+      .expect(401);
   });
 
   it('signs in with a TOTP code after the password step', async () => {
@@ -105,10 +112,15 @@ describe('Two-factor sign-in, including backup codes (e2e)', () => {
     const pending = await passwordStep(user.email);
     const res = await http
       .post('/v1/auth/two-factor/verify-totp')
+      .set('Origin', ORIGIN)
       .set('Cookie', pending)
       .send({ code: totp(user.secret) })
       .expect(200);
-    await http.get('/v1/me').set('Cookie', cookieHeader(res)).expect(200);
+    await http
+      .get('/v1/me')
+      .set('Origin', ORIGIN)
+      .set('Cookie', cookieHeader(res))
+      .expect(200);
   });
 
   it('signs in with a backup code, which then cannot be reused', async () => {
@@ -118,11 +130,16 @@ describe('Two-factor sign-in, including backup codes (e2e)', () => {
     const pending = await passwordStep(user.email);
     const res = await http
       .post('/v1/auth/two-factor/verify-backup-code')
+      .set('Origin', ORIGIN)
       .set('Cookie', pending)
       .send({ code })
       .expect(200);
     const session = cookieHeader(res);
-    const me = await http.get('/v1/me').set('Cookie', session).expect(200);
+    const me = await http
+      .get('/v1/me')
+      .set('Origin', ORIGIN)
+      .set('Cookie', session)
+      .expect(200);
     expect(me.body.id).toBe(user.id);
     expect(me.body.twoFactorEnabled).toBe(true);
 
@@ -130,6 +147,7 @@ describe('Two-factor sign-in, including backup codes (e2e)', () => {
     const again = await passwordStep(user.email);
     const reuse = await http
       .post('/v1/auth/two-factor/verify-backup-code')
+      .set('Origin', ORIGIN)
       .set('Cookie', again)
       .send({ code });
     expect(reuse.status).toBeGreaterThanOrEqual(400);
@@ -138,6 +156,7 @@ describe('Two-factor sign-in, including backup codes (e2e)', () => {
     // Another unused code still works.
     await http
       .post('/v1/auth/two-factor/verify-backup-code')
+      .set('Origin', ORIGIN)
       .set('Cookie', again)
       .send({ code: user.backupCodes[1] })
       .expect(200);
@@ -148,6 +167,7 @@ describe('Two-factor sign-in, including backup codes (e2e)', () => {
     const pending = await passwordStep(user.email);
     const wrong = await http
       .post('/v1/auth/two-factor/verify-backup-code')
+      .set('Origin', ORIGIN)
       .set('Cookie', pending)
       .send({ code: 'not-a-real-code' });
     expect(wrong.status).toBeGreaterThanOrEqual(400);
@@ -173,11 +193,13 @@ describe('Two-factor sign-in, including backup codes (e2e)', () => {
     const pending = await passwordStep(user.email);
     const old = await http
       .post('/v1/auth/two-factor/verify-backup-code')
+      .set('Origin', ORIGIN)
       .set('Cookie', pending)
       .send({ code: user.backupCodes[0] });
     expect(old.status).toBeGreaterThanOrEqual(400);
     await http
       .post('/v1/auth/two-factor/verify-backup-code')
+      .set('Origin', ORIGIN)
       .set('Cookie', pending)
       .send({ code: fresh[0] })
       .expect(200);

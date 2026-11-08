@@ -1,5 +1,21 @@
 import { z } from 'zod';
 
+const PROXY_KEYWORDS = new Set(['loopback', 'linklocal', 'uniquelocal']);
+const IPV4 = /^(25[0-5]|2[0-4]\d|1?\d?\d)(\.(25[0-5]|2[0-4]\d|1?\d?\d)){3}$/;
+
+/** An IP, an IP/CIDR or an Express trust-proxy keyword. */
+export function isProxyAddress(value: string): boolean {
+  if (PROXY_KEYWORDS.has(value)) return true;
+  const [ip, bits, ...rest] = value.split('/');
+  if (rest.length > 0) return false;
+  const v4 = IPV4.test(ip);
+  const v6 = !v4 && /^[0-9a-fA-F:]+$/.test(ip) && ip.includes(':');
+  if (!v4 && !v6) return false;
+  if (bits === undefined) return true;
+  const n = Number(bits);
+  return /^\d+$/.test(bits) && n >= 0 && n <= (v4 ? 32 : 128);
+}
+
 /** True for "https://app.example.com" or "http://localhost:3000"; false for paths or slashes. */
 export function isExactOrigin(value: string): boolean {
   try {
@@ -54,6 +70,38 @@ const EnvSchema = z.object({
     .enum(['true', 'false'])
     .default('true')
     .transform((v) => v === 'true'),
+  /**
+   * Which proxies may set X-Forwarded-For. `false` (default): the socket address is the client
+   * IP and the header is ignored. A number: that many trusted hops in front of the API (for
+   * example 1 behind a single load balancer). Otherwise a comma-separated list of proxy IPs or
+   * CIDRs (Express keywords loopback, linklocal and uniquelocal are allowed). `true` (trust
+   * any hop) is refused: it lets clients spoof their IP and bypass rate limits.
+   */
+  TRUST_PROXY: z
+    .string()
+    .default('false')
+    .transform((v, ctx): false | number | string[] => {
+      const value = v.trim();
+      if (value === 'false' || value === '') return false;
+      if (/^\d+$/.test(value)) {
+        const hops = Number(value);
+        if (hops >= 1 && hops <= 10) return hops;
+      } else if (value !== 'true') {
+        const list = value
+          .split(',')
+          .map((s) => s.trim())
+          .filter(Boolean);
+        if (list.length > 0 && list.every(isProxyAddress)) return list;
+      }
+      ctx.addIssue({ code: 'custom', message: 'invalid TRUST_PROXY' });
+      return z.NEVER;
+    }),
+  /**
+   * Breached-password check on sign-up, password change and reset. `bundled` (default) checks
+   * the bundled list only. `hibp` also asks Have I Been Pwned's k-anonymity range API (only
+   * the first 5 hex characters of the SHA-1 leave the server); needs outbound HTTPS.
+   */
+  PASSWORD_BREACH_CHECK: z.enum(['bundled', 'hibp']).default('bundled'),
   /** Inactive anonymous sessions (and their data) expire after this many days. */
   ANONYMOUS_SESSION_TTL_DAYS: z.coerce.number().int().positive().default(180),
   /**
