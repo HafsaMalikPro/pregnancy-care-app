@@ -50,7 +50,7 @@ class TaskListQueryDto extends LocaleQueryDto {
   category?: string;
 }
 
-class ReadinessTaskDto implements ReadinessTask {
+export class ReadinessTaskDto implements ReadinessTask {
   @ApiProperty({ format: 'uuid' }) id: string;
   @ApiProperty({ example: 'start-folic-acid' }) key: string;
   @ApiProperty() title: string;
@@ -107,7 +107,7 @@ class PutProgressDto {
   note?: string | null;
 }
 
-type TaskWithArticle = TaskRow & { article: Article | null };
+export type TaskWithArticle = TaskRow & { article: Article | null };
 
 @ApiTags('readiness')
 @ApiOwnerAuth()
@@ -142,7 +142,7 @@ export class ReadinessController {
         orderBy: [{ sortOrder: 'asc' }, { key: 'asc' }],
         include: { article: true },
       }),
-      this.entitlements.isPremium(owner),
+      this.entitlements.canAccessPremium(owner),
       this.pregnancy.active(owner),
     ]);
     const progress = await this.prisma.userTaskProgress.findMany({
@@ -150,7 +150,12 @@ export class ReadinessController {
     });
     const byTask = new Map(progress.map((p) => [p.taskId, p]));
     return tasks.map((t) =>
-      toDto(t, byTask.get(t.id), t.premium && !premium, active?.week ?? null),
+      toReadinessTask(
+        t,
+        byTask.get(t.id),
+        t.premium && !premium,
+        active?.week ?? null,
+      ),
     );
   }
 
@@ -172,7 +177,7 @@ export class ReadinessController {
       include: { article: true },
     });
     if (!task) throw new NotFoundException('Task not found.');
-    if (task.premium && !(await this.entitlements.isPremium(owner))) {
+    if (task.premium && !(await this.entitlements.canAccessPremium(owner))) {
       throw premiumRequired();
     }
     await this.consent.assertHealthDataConsent(owner);
@@ -198,7 +203,7 @@ export class ReadinessController {
       : await this.prisma.userTaskProgress.create({
           data: { ...ownerWhere(owner), taskId, ...data },
         });
-    return toDto(
+    return toReadinessTask(
       task,
       row,
       false,
@@ -207,7 +212,7 @@ export class ReadinessController {
   }
 }
 
-function toDto(
+export function toReadinessTask(
   task: TaskWithArticle,
   progress: UserTaskProgress | undefined,
   locked: boolean,

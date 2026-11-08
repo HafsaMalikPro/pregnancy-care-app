@@ -97,7 +97,7 @@ export class ArticlesController {
       orderBy: { reviewedAt: 'desc' },
     });
     const locked =
-      row.premium && !(owner && (await this.entitlements.isPremium(owner)));
+      row.premium && !(await this.entitlements.canAccessPremium(owner));
     return toArticle(row, review, locked);
   }
 }

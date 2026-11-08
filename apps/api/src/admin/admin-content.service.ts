@@ -8,7 +8,9 @@ import {
 import {
   ActivitySections,
   MealPlanSections,
+  PostpartumGuideSections,
   RecipeSections,
+  VisitScheduleSections,
 } from '@preconception/contracts';
 import type { z } from 'zod';
 import { AuditService } from '../audit/audit.service.js';
@@ -37,13 +39,16 @@ export interface ArticleDraftInput {
 }
 
 type ContentKindName = 'article' | 'week_guide' | StructuredKind;
-export type StructuredKind = 'recipe' | 'activity' | 'meal_plan';
+export type StructuredKind =
+  'recipe' | 'activity' | 'meal_plan' | 'visit_schedule' | 'postpartum_guide';
 
 /** Zod schema for each structured kind's `sections`. */
 const STRUCTURED: Record<StructuredKind, z.ZodType> = {
   recipe: RecipeSections,
   activity: ActivitySections,
   meal_plan: MealPlanSections,
+  visit_schedule: VisitScheduleSections,
+  postpartum_guide: PostpartumGuideSections,
 };
 
 export const isStructured = (kind: string): kind is StructuredKind =>
@@ -70,8 +75,23 @@ export function parseStructured(kind: StructuredKind, value: unknown): object {
       ]);
     }
   }
+  if (kind === 'visit_schedule') {
+    const v = result.data as VisitScheduleSections;
+    const problems = v.visits.flatMap((visit, i) => [
+      ...(visit.fromWeek > visit.toWeek
+        ? [`sections.visits.${i}: fromWeek must be <= toWeek`]
+        : []),
+      ...(v.visits.findIndex((o) => o.key === visit.key) !== i
+        ? [`sections.visits.${i}: duplicate key ${visit.key}`]
+        : []),
+    ]);
+    if (problems.length) throw new BadRequestException(problems);
+  }
   return result.data as object;
 }
+
+/** Postpartum guides use the slug "postpartum-week-<n>", matching sections.week. */
+export const postpartumGuideSlug = (week: number) => `postpartum-week-${week}`;
 
 export interface WeekGuideDraftInput {
   week: number;
@@ -120,8 +140,24 @@ export class AdminContentService {
       ]);
     }
     const kind = input.kind ?? 'article';
+    if (
+      kind !== 'postpartum_guide' &&
+      input.slug.startsWith('postpartum-week-')
+    ) {
+      throw new BadRequestException([
+        'slug "postpartum-week-*" is reserved for postpartum guides',
+      ]);
+    }
     if (isStructured(kind)) {
       input = { ...input, sections: parseStructured(kind, input.sections) };
+    }
+    if (kind === 'postpartum_guide') {
+      const week = (input.sections as PostpartumGuideSections).week;
+      if (input.slug !== postpartumGuideSlug(week)) {
+        throw new BadRequestException([
+          `slug must be "${postpartumGuideSlug(week)}" for sections.week ${week}`,
+        ]);
+      }
     }
     return this.prisma.$transaction(async (tx) => {
       const versions = await tx.article.findMany({
@@ -194,18 +230,32 @@ export class AdminContentService {
       if (structuredSections !== undefined) {
         if (!isStructured(article.kind)) {
           throw new BadRequestException([
-            'structuredSections apply to recipes, activities and meal plans only',
+            'structuredSections apply to recipes, activities, meal plans, visit schedules and postpartum guides only',
           ]);
         }
-        input = {
-          ...rest,
-          sections: parseStructured(article.kind, structuredSections),
-        };
+        const sections = parseStructured(article.kind, structuredSections);
+        if (
+          article.kind === 'postpartum_guide' &&
+          article.slug !==
+            postpartumGuideSlug((sections as PostpartumGuideSections).week)
+        ) {
+          throw new BadRequestException([
+            `sections.week must stay as in the slug "${article.slug}"`,
+          ]);
+        }
+        input = { ...rest, sections };
       } else {
         input = rest;
       }
-      if (input.premium && article.kind === 'week_guide') {
-        throw new BadRequestException(['week guides cannot be premium']);
+      if (
+        input.premium &&
+        ['week_guide', 'visit_schedule', 'postpartum_guide'].includes(
+          article.kind,
+        )
+      ) {
+        throw new BadRequestException([
+          'week guides, visit schedules and postpartum guides cannot be premium',
+        ]);
       }
       const updated = await tx.article.update({ where: { id }, data: input });
       await this.log(tx, actor, 'article.updated', updated, requestId);

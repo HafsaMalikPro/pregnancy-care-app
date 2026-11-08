@@ -44,8 +44,13 @@ export class ConsentService {
 
   /** Throws CONSENT_REQUIRED unless health_data_processing is currently granted. */
   async assertHealthDataConsent(owner: Owner): Promise<void> {
+    if (!(await this.hasHealthDataConsent(owner))) throw consentRequired();
+  }
+
+  /** Whether health_data_processing is currently granted (for writes that must not fail). */
+  async hasHealthDataConsent(owner: Owner): Promise<boolean> {
     const latest = await this.latest(owner, 'health_data_processing');
-    if (!latest?.granted) throw consentRequired();
+    return latest?.granted ?? false;
   }
 
   private latest(owner: Owner, purpose: ConsentPurpose) {

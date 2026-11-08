@@ -113,6 +113,10 @@ export class PersonalMealPlanDto {
   availability: PlanAvailability;
   @ApiProperty({ nullable: true, type: String }) planSlug: string | null;
   @ApiProperty({ nullable: true, type: String }) hydrationNote: string | null;
+  @ApiProperty({
+    description: 'Shown with any hydration amount: adjust with your clinician',
+  })
+  hydrationGuidance: string;
   @ApiProperty({ type: [PersonalMealDayDto] }) days: PersonalMealDayDto[];
   @ApiProperty({ type: MealFiltersDto }) filters: MealFiltersDto;
 }
@@ -211,6 +215,12 @@ export class ExercisePlanDto {
   availability: PlanAvailability;
   @ApiProperty({ nullable: true, type: Number }) week: number | null;
   @ApiProperty({ type: [PlannedActivityDto] }) activities: PlannedActivityDto[];
+  @ApiProperty({
+    type: [String],
+    description:
+      'Slugs of the pelvic-floor routine among activities (type pelvic_floor)',
+  })
+  pelvicFloor: string[];
   @ApiProperty() disclaimer: string;
 }
 

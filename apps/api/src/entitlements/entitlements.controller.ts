@@ -20,6 +20,12 @@ class EntitlementDto implements Entitlement {
 
   @ApiProperty({ nullable: true, type: String, format: 'date-time' })
   expiresAt: string | null;
+
+  @ApiProperty({
+    description:
+      'FEATURE_PREMIUM_LOCKS. False (the default): nothing is locked; show no paywall.',
+  })
+  locksEnabled: boolean;
 }
 
 @ApiTags('entitlements')

@@ -1,4 +1,10 @@
-import { Body, Controller, Get, Put } from '@nestjs/common';
+import {
+  BadRequestException,
+  Body,
+  Controller,
+  Get,
+  Put,
+} from '@nestjs/common';
 import {
   ApiOkResponse,
   ApiOperation,
@@ -10,6 +16,7 @@ import {
   ActivityLevel,
   DietPattern,
   FoodAllergy,
+  LOCAL_TIME_PATTERN,
   type Profile,
   SUPPORTED_LOCALES,
 } from '@preconception/contracts';
@@ -160,6 +167,38 @@ class ProfileDto implements Profile {
   @IsOptional()
   @IsBoolean()
   largerText: boolean;
+
+  @ApiPropertyOptional({
+    nullable: true,
+    type: String,
+    example: '22:00',
+    description:
+      'Quiet hours start ("HH:MM", profile time zone). No reminder emails are sent inside the window; set both or neither. Kept when omitted.',
+  })
+  @IsOptional()
+  @ValidateIf((_, v) => v !== null)
+  @Matches(LOCAL_TIME_PATTERN, { message: 'quietHoursStart must be HH:MM' })
+  quietHoursStart: string | null;
+
+  @ApiPropertyOptional({
+    nullable: true,
+    type: String,
+    example: '07:00',
+    description:
+      'Quiet hours end ("HH:MM"). May be earlier than the start (crosses midnight).',
+  })
+  @IsOptional()
+  @ValidateIf((_, v) => v !== null)
+  @Matches(LOCAL_TIME_PATTERN, { message: 'quietHoursEnd must be HH:MM' })
+  quietHoursEnd: string | null;
+
+  @ApiPropertyOptional({
+    description:
+      'Opt in to weight tracking. Kept when omitted. Turning it off stops new entries; saved ones stay until deleted.',
+  })
+  @IsOptional()
+  @IsBoolean()
+  weightTrackingEnabled: boolean;
 }
 
 const DEFAULT_PROFILE: Profile = {
@@ -176,6 +215,9 @@ const DEFAULT_PROFILE: Profile = {
   contentTopics: [],
   reducedMotion: false,
   largerText: false,
+  quietHoursStart: null,
+  quietHoursEnd: null,
+  weightTrackingEnabled: false,
 };
 
 @ApiTags('profile')
@@ -236,7 +278,23 @@ export class ProfileController {
         reducedMotion: dto.reducedMotion,
       }),
       ...(dto.largerText !== undefined && { largerText: dto.largerText }),
+      ...(dto.weightTrackingEnabled !== undefined && {
+        weightTrackingEnabled: dto.weightTrackingEnabled,
+      }),
     };
+    if (dto.quietHoursStart !== undefined || dto.quietHoursEnd !== undefined) {
+      const start = dto.quietHoursStart ?? null;
+      const end = dto.quietHoursEnd ?? null;
+      if (
+        (start === null) !== (end === null) ||
+        (start !== null && start === end)
+      ) {
+        throw new BadRequestException([
+          'quietHoursStart and quietHoursEnd must both be set (and differ) or both be null',
+        ]);
+      }
+      Object.assign(data, { quietHoursStart: start, quietHoursEnd: end });
+    }
     if (owner.kind === 'user') {
       const row = await this.prisma.$transaction(async (tx) => {
         const before = await tx.profile.findUnique({
@@ -280,5 +338,8 @@ function toProfile(row: ProfileRow): Profile {
     contentTopics: row.contentTopics,
     reducedMotion: row.reducedMotion,
     largerText: row.largerText,
+    quietHoursStart: row.quietHoursStart,
+    quietHoursEnd: row.quietHoursEnd,
+    weightTrackingEnabled: row.weightTrackingEnabled,
   };
 }

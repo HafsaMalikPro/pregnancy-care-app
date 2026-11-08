@@ -28,6 +28,11 @@ const PUBLIC_ROUTES = new Set([
   'GET /v1/activities/{slug}',
   'GET /v1/meal-plans',
   'GET /v1/meal-plans/{slug}',
+  'GET /v1/symptom-checks/options',
+  // Optional auth: anyone gets the triage result; it is saved only for a consenting owner.
+  'POST /v1/symptom-checks',
+  'GET /v1/visit-schedules',
+  'GET /v1/postpartum-guides/{week}',
 ]);
 
 describe('Identity and access (e2e)', () => {

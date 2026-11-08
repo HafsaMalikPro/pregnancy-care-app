@@ -15,7 +15,11 @@ import { EmailModule } from './email/email.module.js';
 import { DatabaseModule } from './database/database.module.js';
 import { EntitlementsModule } from './entitlements/entitlements.module.js';
 import { HealthController } from './health/health.controller.js';
+import { JourneyModule } from './journey/journey.module.js';
 import { PlanningModule } from './planning/planning.module.js';
+import { SymptomsModule } from './symptoms/symptoms.module.js';
+import { TrackersModule } from './trackers/trackers.module.js';
+import { WeightModule } from './weight/weight.module.js';
 import { PregnancyModule } from './pregnancy/pregnancy.module.js';
 import { PrivacyModule } from './privacy/privacy.module.js';
 import { ProfileModule } from './profile/profile.module.js';
@@ -48,6 +52,10 @@ import { RemindersModule } from './reminders/reminders.module.js';
     DailyLogsModule,
     ContentModule,
     PlanningModule,
+    SymptomsModule,
+    TrackersModule,
+    WeightModule,
+    JourneyModule,
     RemindersModule,
     PrivacyModule,
     AdminModule,

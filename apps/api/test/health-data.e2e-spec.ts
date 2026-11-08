@@ -441,6 +441,9 @@ describe('Health data (e2e)', () => {
         contentTopics: [],
         reducedMotion: false,
         largerText: false,
+        quietHoursStart: null,
+        quietHoursEnd: null,
+        weightTrackingEnabled: false,
       });
       const saved = await http
         .put('/v1/me/profile')

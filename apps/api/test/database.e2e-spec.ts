@@ -29,6 +29,10 @@ const OWNED_TABLES = [
   'saved_content',
   'shopping_items',
   'plan_task_completions',
+  'symptom_checks',
+  'kick_sessions',
+  'contractions',
+  'weight_entries',
 ];
 
 /** Postgres error code from a Prisma error raised through the pg adapter. */

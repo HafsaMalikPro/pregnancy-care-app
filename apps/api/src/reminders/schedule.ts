@@ -126,3 +126,18 @@ export function nextOccurrence(
   }
   return null;
 }
+
+/**
+ * Whether a local "HH:MM" falls inside quiet hours [start, end). The window may cross midnight
+ * (22:00-07:00). No window (either end null) means never quiet.
+ */
+export function inQuietHours(
+  localTime: string,
+  start: string | null,
+  end: string | null,
+): boolean {
+  if (!start || !end || start === end) return false;
+  return start < end
+    ? localTime >= start && localTime < end
+    : localTime >= start || localTime < end;
+}

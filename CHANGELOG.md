@@ -35,3 +35,34 @@
 - Production guard: new `AUTH_COOKIE_SECURE` (default on in production and staging; production
   refuses `false`). An e2e test checks that production session cookies are `__Secure-`,
   `Secure` and `HttpOnly`.
+
+### Phase 2 — 9-month product (backend)
+
+- `FEATURE_PREMIUM_LOCKS` (default `false`): nothing is locked and `GET /v1/me/entitlement`
+  reports `locksEnabled: false`, so clients show no paywall. Every gate goes through
+  `EntitlementsService.canAccessPremium`. The `subscriptions` table is unchanged; payments stay
+  out of scope.
+- Symptom checks: `GET /v1/symptom-checks/options` (fixed vocabulary) and
+  `POST /v1/symptom-checks`, a rule-based triage (`routine` / `call_clinic_today` /
+  `emergency`) from the version-controlled `src/symptoms/triage-rules.json`. Any red flag
+  escalates. The result is always returned, including to visitors and without consent; it is
+  saved to the journal only with `health_data_processing` consent. The rules file has
+  `review: null`, and the API labels it "not yet clinically reviewed".
+- Kick counter (third trimester): sessions, kick counts, per-day totals and an owner-set
+  clinician threshold with an alert template. Contraction timer: start/stop with duration and
+  interval per day and a fixed "contact your maternity unit" message.
+- Prenatal visit schedule per trimester from reviewed content, mapped onto the pregnancy with
+  booked appointments. Postpartum mode: week guides 1–6 after birth plus recovery checklist.
+- Opt-in weight tracking (`/v1/weight-entries`): plain trend with no target ranges or ideal
+  weight.
+- Profile: `quietHoursStart` / `quietHoursEnd` (set as a pair; reminder emails inside the
+  window are skipped with `QUIET_HOURS`) and `weightTrackingEnabled`.
+- Export bundle is now `preconception-export@2` and includes symptom checks, kick sessions,
+  contractions and weight entries. Guest linking and deletion cover the new tables.
+- Migration `20261107105913_tracking_and_postpartum` (four owner tables with the single-owner
+  CHECK and cascades).
+- Tests: existing suites updated for the new profile fields, export format and owner tables.
+  `content-admin` runs with locks on, and `journey-tracking` covers locks off. The paused
+  reminder test now checks its own reminder instead of global tick counts (it was flaky with
+  other files' reminders). New e2e test: quiet hours skip delivery and scheduling continues.
+  Unit + e2e 746/746, statements 97.05%. OpenAPI 113 paths, regenerated with no diff.

@@ -5,9 +5,13 @@ import type {
   ContentCategory,
   MealPlan,
   MealPlanSections,
+  PostpartumGuide,
+  PostpartumGuideSections,
   Recipe,
   RecipeSections,
   Trimester,
+  VisitSchedule,
+  VisitScheduleSections,
 } from '@preconception/contracts';
 import { toIsoDate } from '../common/dates.js';
 import { PrismaService } from '../database/prisma.service.js';
@@ -19,7 +23,8 @@ import type {
 import { recipeAllergens } from './catalog.js';
 import { parseReferences, toReviewInfo } from './content.mapper.js';
 
-type StructuredKind = 'recipe' | 'activity' | 'meal_plan';
+type StructuredKind =
+  'recipe' | 'activity' | 'meal_plan' | 'visit_schedule' | 'postpartum_guide';
 
 /**
  * Reads published recipes, activities and meal plans. Only status = published is ever
@@ -98,6 +103,26 @@ export class CatalogService {
       if (!latest.has(r.articleId)) latest.set(r.articleId, r);
     return latest;
   }
+}
+
+export function toVisitSchedule(
+  row: Row,
+  review: ContentReview | null,
+): VisitSchedule {
+  return {
+    ...base(row, review),
+    sections: row.sections as VisitScheduleSections,
+  };
+}
+
+export function toPostpartumGuide(
+  row: Row,
+  review: ContentReview | null,
+): PostpartumGuide {
+  return {
+    ...base(row, review),
+    sections: row.sections as PostpartumGuideSections,
+  };
 }
 
 function base(row: Row, review: ContentReview | null) {

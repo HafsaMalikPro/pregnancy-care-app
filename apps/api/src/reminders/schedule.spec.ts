@@ -1,4 +1,9 @@
-import { nextOccurrence, ruleWeekdays, zonedToInstant } from './schedule.js';
+import {
+  inQuietHours,
+  nextOccurrence,
+  ruleWeekdays,
+  zonedToInstant,
+} from './schedule.js';
 
 const at = (iso: string) => new Date(iso);
 const next = (after: string, time: string, rule: string, tz: string) =>
@@ -102,5 +107,29 @@ describe('zonedToInstant', () => {
         ),
       ).toISOString(),
     ).toBe('2026-07-01T10:00:00.000Z');
+  });
+});
+
+describe('inQuietHours', () => {
+  it('is never quiet without a window', () => {
+    expect(inQuietHours('03:00', null, null)).toBe(false);
+    expect(inQuietHours('03:00', '22:00', null)).toBe(false);
+    expect(inQuietHours('03:00', '09:00', '09:00')).toBe(false);
+  });
+
+  it('handles a same-day window, start inclusive and end exclusive', () => {
+    expect(inQuietHours('13:00', '13:00', '15:00')).toBe(true);
+    expect(inQuietHours('14:59', '13:00', '15:00')).toBe(true);
+    expect(inQuietHours('15:00', '13:00', '15:00')).toBe(false);
+    expect(inQuietHours('12:59', '13:00', '15:00')).toBe(false);
+  });
+
+  it('handles a window that crosses midnight', () => {
+    expect(inQuietHours('22:00', '22:00', '07:00')).toBe(true);
+    expect(inQuietHours('23:30', '22:00', '07:00')).toBe(true);
+    expect(inQuietHours('00:00', '22:00', '07:00')).toBe(true);
+    expect(inQuietHours('06:59', '22:00', '07:00')).toBe(true);
+    expect(inQuietHours('07:00', '22:00', '07:00')).toBe(false);
+    expect(inQuietHours('21:59', '22:00', '07:00')).toBe(false);
   });
 });

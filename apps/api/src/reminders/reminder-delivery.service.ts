@@ -15,6 +15,7 @@ import {
 } from '../email/email-sender.js';
 import { reminderEmail } from '../email/templates.js';
 import { ReminderScheduleService } from './reminder-schedule.service.js';
+import { inQuietHours } from './schedule.js';
 
 /** Occurrences more than this late (e.g. after an outage) are skipped, not sent. */
 export const MAX_LATENESS_MS = 60 * 60_000;
@@ -142,35 +143,41 @@ export class ReminderDeliveryService
       const reminders = await tx.reminder.findMany({
         where: { id: { in: due.map((d) => d.id) } },
       });
-      const zones = new Map<string, string>();
+      const prefs = new Map<
+        string,
+        Awaited<ReturnType<ReminderScheduleService['deliveryPrefsFor']>>
+      >();
       for (const r of reminders) {
         if (!r.userId || !r.nextRunAt) continue;
+        let p = prefs.get(r.userId);
+        if (!p) {
+          p = await this.schedule.deliveryPrefsFor(r.userId, tx);
+          prefs.set(r.userId, p);
+        }
         const late = now.getTime() - r.nextRunAt.getTime() > MAX_LATENESS_MS;
+        // Quiet hours: the occurrence is recorded as skipped, never sent later.
+        const quiet = inQuietHours(r.localTime, p.quietStart, p.quietEnd);
+        const skipCode = late ? 'TOO_LATE' : quiet ? 'QUIET_HOURS' : null;
         const created = await tx.reminderDelivery.createMany({
           data: [
             {
               reminderId: r.id,
               scheduledFor: r.nextRunAt,
               channel: r.channel,
-              status: late ? 'skipped' : 'pending',
-              lastErrorCode: late ? 'TOO_LATE' : null,
+              status: skipCode ? 'skipped' : 'pending',
+              lastErrorCode: skipCode,
               nextAttemptAt: now,
             },
           ],
           skipDuplicates: true,
         });
         if (created.count > 0) {
-          if (late) result.skipped++;
+          if (skipCode) result.skipped++;
           else result.queued++;
-        }
-        let zone = zones.get(r.userId);
-        if (!zone) {
-          zone = await this.schedule.timeZoneFor(r.userId, tx);
-          zones.set(r.userId, zone);
         }
         await tx.reminder.update({
           where: { id: r.id },
-          data: { nextRunAt: this.schedule.nextRunAt(r, zone, now) },
+          data: { nextRunAt: this.schedule.nextRunAt(r, p.timeZone, now) },
         });
       }
     });

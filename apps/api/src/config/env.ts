@@ -27,6 +27,15 @@ const EnvSchema = z.object({
     .enum(['true', 'false'])
     .optional()
     .transform((v) => (v === undefined ? undefined : v === 'true')),
+  /**
+   * Premium gating. Off by default: every article, task and plan is fully accessible and
+   * clients show no paywall. Payments are out of scope; entitlements still come only from
+   * verified `subscriptions` rows when this is on.
+   */
+  FEATURE_PREMIUM_LOCKS: z
+    .enum(['true', 'false'])
+    .default('false')
+    .transform((v) => v === 'true'),
   /** Per-IP rate limiting (Nest throttler and Better Auth). Disable only in tests. */
   RATE_LIMIT_ENABLED: z
     .enum(['true', 'false'])

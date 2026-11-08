@@ -126,6 +126,40 @@ export class AdminStructuredController {
     return this.create('meal_plan', actor, dto, req);
   }
 
+  @Post('visit-schedules')
+  @Staff('content_editor')
+  @ApiOperation({
+    summary: 'Create a prenatal visit schedule draft (one per trimester)',
+    description:
+      'Roles: content_editor, administrator. `sections` must match VisitScheduleSections (visits with week windows, purpose and typical checks, written by the clinical team). Use category prenatal_care. Review and publish with /admin/articles/{id}/….',
+  })
+  @ApiCreatedResponse({ type: AdminArticleDto })
+  @ApiErrors(400, 409)
+  visitSchedule(
+    @CurrentUser() actor: SessionUser,
+    @Body() dto: CreateStructuredContentDto,
+    @Req() req: Request,
+  ) {
+    return this.create('visit_schedule', actor, dto, req);
+  }
+
+  @Post('postpartum-guides')
+  @Staff('content_editor')
+  @ApiOperation({
+    summary: 'Create a postpartum week guide draft (weeks 1-6 after birth)',
+    description:
+      'Roles: content_editor, administrator. `sections` must match PostpartumGuideSections; the slug must be "postpartum-week-<sections.week>". Use category postpartum. Review and publish with /admin/articles/{id}/….',
+  })
+  @ApiCreatedResponse({ type: AdminArticleDto })
+  @ApiErrors(400, 409)
+  postpartumGuide(
+    @CurrentUser() actor: SessionUser,
+    @Body() dto: CreateStructuredContentDto,
+    @Req() req: Request,
+  ) {
+    return this.create('postpartum_guide', actor, dto, req);
+  }
+
   @Get('content/coverage')
   @Staff('content_editor', 'clinical_reviewer')
   @ApiOperation({

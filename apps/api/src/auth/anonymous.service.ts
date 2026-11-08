@@ -108,6 +108,10 @@ export class AnonymousSessionService {
         tx.mealLog.count({ where: owned }),
         tx.activityLog.count({ where: owned }),
         tx.planTaskCompletion.count({ where: owned }),
+        tx.symptomCheck.count({ where: owned }),
+        tx.kickSession.count({ where: owned }),
+        tx.contraction.count({ where: owned }),
+        tx.weightEntry.count({ where: owned }),
       ]);
       if (counts.some((n) => n > 0)) {
         // Thrown inside the transaction, so the claim above rolls back: the guest secret
@@ -142,6 +146,10 @@ export class AnonymousSessionService {
       await tx.mealLog.updateMany({ where: from, data: to });
       await tx.activityLog.updateMany({ where: from, data: to });
       await tx.planTaskCompletion.updateMany({ where: from, data: to });
+      await tx.symptomCheck.updateMany({ where: from, data: to });
+      await tx.kickSession.updateMany({ where: from, data: to });
+      await tx.contraction.updateMany({ where: from, data: to });
+      await tx.weightEntry.updateMany({ where: from, data: to });
       const [savedSlugs, shoppingNames] = await Promise.all([
         tx.savedContent.findMany({
           where: owned,

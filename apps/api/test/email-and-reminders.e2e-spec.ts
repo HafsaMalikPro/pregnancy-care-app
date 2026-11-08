@@ -413,12 +413,50 @@ describe('email and reminder delivery (e2e)', () => {
         status: 'cancelled',
         lastErrorCode: 'REMINDER_CHANGED',
       });
+      // tick() is global (other files' reminders may be due two days later), so check that
+      // nothing new was queued or sent for this reminder rather than the global counts.
+      await delivery.tick(plus(due.toISOString(), 2 * 86_400_000));
+      const after = await deliveriesOf(reminder.id);
+      expect(after).toHaveLength(1);
+      expect(after[0]).toMatchObject({ status: 'cancelled' });
       expect(
-        await delivery.tick(plus(due.toISOString(), 2 * 86_400_000)),
-      ).toMatchObject({
-        sent: 0,
-        queued: 0,
+        mail.sent.filter((m) => m.to === user.email && m.tag === 'reminder'),
+      ).toHaveLength(0);
+    });
+
+    it('skips occurrences inside quiet hours and keeps scheduling the next one', async () => {
+      const user = await verifiedUser();
+      await http
+        .put('/v1/me/profile')
+        .set(user)
+        .send({
+          timeZone: 'Asia/Karachi',
+          locale: 'en',
+          quietHoursStart: '19:00',
+          quietHoursEnd: '07:00',
+        })
+        .expect(200);
+      const quiet = await emailReminder(user); // 20:00 local, inside 19:00-07:00
+      const outside = await emailReminder(user, { localTime: '12:00' });
+      await delivery.tick(plus(quiet.nextRunAt, 1000));
+      expect((await deliveriesOf(quiet.id))[0]).toMatchObject({
+        status: 'skipped',
+        lastErrorCode: 'QUIET_HOURS',
       });
+      await delivery.tick(plus(outside.nextRunAt, 1000));
+      expect((await deliveriesOf(outside.id))[0]).toMatchObject({
+        status: 'sent',
+      });
+      expect(
+        mail.sent.filter((m) => m.to === user.email && m.tag === 'reminder'),
+      ).toHaveLength(1);
+      // The quiet reminder still moves on to its next day.
+      const after = await prisma.reminder.findUniqueOrThrow({
+        where: { id: quiet.id },
+      });
+      expect(after.nextRunAt!.getTime()).toBeGreaterThan(
+        new Date(quiet.nextRunAt).getTime(),
+      );
     });
 
     it('skips occurrences missed by more than an hour instead of sending them late', async () => {

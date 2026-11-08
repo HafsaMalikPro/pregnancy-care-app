@@ -68,6 +68,10 @@ model User {
   savedContent    SavedContent[]
   shoppingItems   ShoppingItem[]
   planCompletions PlanTaskCompletion[]
+  symptomChecks   SymptomCheck[]
+  kickSessions    KickSession[]
+  contractions    Contraction[]
+  weightEntries   WeightEntry[]
 
   @@map("users")
 }
@@ -168,6 +172,10 @@ model AnonymousSession {
   savedContent    SavedContent[]
   shoppingItems   ShoppingItem[]
   planCompletions PlanTaskCompletion[]
+  symptomChecks   SymptomCheck[]
+  kickSessions    KickSession[]
+  contractions    Contraction[]
+  weightEntries   WeightEntry[]
 
   @@index([expiresAt])
   @@map("anonymous_sessions")
@@ -204,6 +212,11 @@ model Profile {
   contentTopics         String[] @default([]) @map("content_topics")
   reducedMotion         Boolean  @default(false) @map("reduced_motion")
   largerText            Boolean  @default(false) @map("larger_text")
+  /// Local "HH:MM" quiet-hours window for reminder emails; both null = none. May cross midnight.
+  quietHoursStart       String?  @map("quiet_hours_start")
+  quietHoursEnd         String?  @map("quiet_hours_end")
+  /// Opt-in. Weight entries are accepted only while true.
+  weightTrackingEnabled Boolean  @default(false) @map("weight_tracking_enabled")
   createdAt             DateTime @default(now()) @map("created_at") @db.Timestamptz
   updatedAt             DateTime @updatedAt @map("updated_at") @db.Timestamptz
 
@@ -325,6 +338,8 @@ enum ContentKind {
   recipe
   activity
   meal_plan
+  visit_schedule
+  postpartum_guide
 }
 
 model Article {
@@ -649,6 +664,11 @@ model Pregnancy {
   /// A clinician or dietitian manages what this user eats (for example because of a condition).
   /// Generic meal plans are then withheld. Self-reported; never inferred.
   clinicianNutritionPlan Boolean           @default(false) @map("clinician_nutrition_plan")
+  /// Kick-count threshold the user entered from their clinician's instructions (both or neither).
+  /// The app never proposes a value. Health data: never logged.
+  kickThresholdCount     Int?              @map("kick_threshold_count") @db.SmallInt
+  kickThresholdMinutes   Int?              @map("kick_threshold_minutes") @db.SmallInt
+  kickThresholdUpdatedAt DateTime?         @map("kick_threshold_updated_at") @db.Timestamptz
   /// Health data: never logged or sent to analytics.
   outcome                PregnancyOutcome?
   endedOn                DateTime?         @map("ended_on") @db.Date
@@ -660,6 +680,8 @@ model Pregnancy {
   datings          PregnancyDating[]
   birthPreferences BirthPreferences?
   appointments     Appointment[]
+  kickSessions     KickSession[]
+  contractions     Contraction[]
 
   @@index([userId, createdAt(sort: Desc)])
   @@index([anonymousSessionId, createdAt(sort: Desc)])
@@ -833,4 +855,102 @@ model PlanTaskCompletion {
   @@unique([userId, date, taskKey])
   @@unique([anonymousSessionId, date, taskKey])
   @@map("plan_task_completions")
+}
+
+// ---------------------------------------------------------------------------
+// Symptom checks, kick counting, contractions and weight (2026-11-07)
+// ---------------------------------------------------------------------------
+
+enum TriageLevel {
+  routine
+  call_clinic_today
+  emergency
+}
+
+/// One run of the red-flag screen and its rule-based result. Never a diagnosis.
+/// Health data: never logged or written to audit metadata.
+model SymptomCheck {
+  id                 String      @id @default(uuid(7)) @db.Uuid
+  userId             String?     @map("user_id") @db.Uuid
+  anonymousSessionId String?     @map("anonymous_session_id") @db.Uuid
+  /// The owner's local date (profile time zone) when the check was made.
+  date               DateTime    @db.Date
+  symptoms           String[]
+  level              TriageLevel
+  matchedRules       String[]    @default([]) @map("matched_rules")
+  /// pregnancy | postpartum | unknown, as the API determined it.
+  stage              String
+  rulesVersion       String      @map("rules_version")
+  createdAt          DateTime    @default(now()) @map("created_at") @db.Timestamptz
+
+  user             User?             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  anonymousSession AnonymousSession? @relation(fields: [anonymousSessionId], references: [id], onDelete: Cascade)
+
+  @@index([userId, date])
+  @@index([anonymousSessionId, date])
+  @@map("symptom_checks")
+}
+
+/// A kick-counting session (third trimester). Owned directly and linked to the pregnancy.
+model KickSession {
+  id                 String    @id @default(uuid(7)) @db.Uuid
+  userId             String?   @map("user_id") @db.Uuid
+  anonymousSessionId String?   @map("anonymous_session_id") @db.Uuid
+  pregnancyId        String    @map("pregnancy_id") @db.Uuid
+  /// Owner's local date when the session started.
+  date               DateTime  @db.Date
+  startedAt          DateTime  @map("started_at") @db.Timestamptz
+  endedAt            DateTime? @map("ended_at") @db.Timestamptz
+  count              Int       @default(0) @db.SmallInt
+  createdAt          DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt          DateTime  @updatedAt @map("updated_at") @db.Timestamptz
+
+  user             User?             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  anonymousSession AnonymousSession? @relation(fields: [anonymousSessionId], references: [id], onDelete: Cascade)
+  pregnancy        Pregnancy         @relation(fields: [pregnancyId], references: [id], onDelete: Cascade)
+
+  @@index([userId, date])
+  @@index([anonymousSessionId, date])
+  @@map("kick_sessions")
+}
+
+/// One timed contraction. Interval and duration are computed by the API, never advice.
+model Contraction {
+  id                 String    @id @default(uuid(7)) @db.Uuid
+  userId             String?   @map("user_id") @db.Uuid
+  anonymousSessionId String?   @map("anonymous_session_id") @db.Uuid
+  pregnancyId        String?   @map("pregnancy_id") @db.Uuid
+  /// Owner's local date when it started.
+  date               DateTime  @db.Date
+  startedAt          DateTime  @map("started_at") @db.Timestamptz
+  endedAt            DateTime? @map("ended_at") @db.Timestamptz
+  createdAt          DateTime  @default(now()) @map("created_at") @db.Timestamptz
+
+  user             User?             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  anonymousSession AnonymousSession? @relation(fields: [anonymousSessionId], references: [id], onDelete: Cascade)
+  pregnancy        Pregnancy?        @relation(fields: [pregnancyId], references: [id], onDelete: SetNull)
+
+  @@unique([userId, startedAt])
+  @@unique([anonymousSessionId, startedAt])
+  @@index([userId, date])
+  @@index([anonymousSessionId, date])
+  @@map("contractions")
+}
+
+/// Opt-in weight entry, one per owner and date. No targets or ranges are stored or computed.
+model WeightEntry {
+  id                 String   @id @default(uuid(7)) @db.Uuid
+  userId             String?  @map("user_id") @db.Uuid
+  anonymousSessionId String?  @map("anonymous_session_id") @db.Uuid
+  date               DateTime @db.Date
+  weightKg           Decimal  @map("weight_kg") @db.Decimal(5, 2)
+  createdAt          DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt          DateTime @updatedAt @map("updated_at") @db.Timestamptz
+
+  user             User?             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  anonymousSession AnonymousSession? @relation(fields: [anonymousSessionId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, date])
+  @@unique([anonymousSessionId, date])
+  @@map("weight_entries")
 }

@@ -55,7 +55,7 @@ describe('Privacy: export and deletion (e2e)', () => {
     expect(res.headers['content-disposition']).toContain('attachment');
     expect(res.headers['cache-control']).toBe('no-store');
     expect(res.body).toMatchObject({
-      format: 'preconception-export@1',
+      format: 'preconception-export@2',
       account: { kind: 'user', id: user.id, email: user.email },
       cycles: [{ periodStart: daysAgo(20), periodEnd: daysAgo(16) }],
       dailyLogs: [{ date: daysAgo(2), symptoms: ['headache'], note: 'n' }],

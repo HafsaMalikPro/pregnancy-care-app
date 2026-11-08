@@ -12,6 +12,7 @@ import {
   weekOn,
 } from '../common/pregnancy-context.js';
 import { ConsentService } from '../consent/consent.service.js';
+import { EntitlementsService } from '../entitlements/entitlements.service.js';
 import { PrismaService } from '../database/prisma.service.js';
 import { dateAtGestation } from '../pregnancy/dating.js';
 import {
@@ -46,6 +47,7 @@ export class DailyPlanService {
     private readonly pregnancy: PregnancyContext,
     private readonly plans: PersonalPlansService,
     private readonly consent: ConsentService,
+    private readonly entitlements: EntitlementsService,
   ) {}
 
   async plan(
@@ -53,9 +55,10 @@ export class DailyPlanService {
     opts: { date?: string; days: number; locale: string },
   ): Promise<DailyPlan> {
     const where = ownerWhere(owner);
-    const [active, profile] = await Promise.all([
+    const [active, profile, unlocked] = await Promise.all([
       this.pregnancy.active(owner),
       this.prisma.profile.findFirst({ where, select: { timeZone: true } }),
+      this.entitlements.canAccessPremium(owner),
     ]);
     const zone = profile?.timeZone ?? 'UTC';
     const start = opts.date ?? active?.today ?? (await this.today(zone));
@@ -101,7 +104,11 @@ export class DailyPlanService {
         where: { ...where, date: { in: weekStarts.map(fromIsoDate) } },
       }),
       this.prisma.readinessTask.findMany({
-        where: { locale: opts.locale, status: 'published', premium: false },
+        where: {
+          locale: opts.locale,
+          status: 'published',
+          ...(!unlocked && { premium: false }),
+        },
         orderBy: [{ sortOrder: 'asc' }, { key: 'asc' }],
       }),
       this.prisma.userTaskProgress.findMany({

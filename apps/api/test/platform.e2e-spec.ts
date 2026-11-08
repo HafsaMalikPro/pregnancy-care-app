@@ -328,6 +328,10 @@ describe('Pregnancy platform: content, planning and privacy (e2e)', () => {
       const plan = res.body as PersonalMealPlan;
       expect(plan.availability).toBe('available');
       expect(plan.days).toHaveLength(7);
+      // Hydration is always framed as a general amount to adjust with a clinician, and no
+      // calorie or weight-loss target appears anywhere in the plan.
+      expect(plan.hydrationGuidance).toContain('Adjust it with your clinician');
+      expect(JSON.stringify(plan)).not.toMatch(/calori|kcal|weight[- ]loss/i);
       expect(plan.filters.excludedAllergens).toEqual(['milk']);
       for (const day of plan.days) {
         for (const meal of day.meals)
@@ -395,6 +399,8 @@ describe('Pregnancy platform: content, planning and privacy (e2e)', () => {
       expect(log2.body.id).toBe(log1.body.id);
       expect(log2.body.minutes).toBe(25);
       const plan = await http.get('/v1/me/exercise-plan').set(user).expect(200);
+      expect(Array.isArray(plan.body.pelvicFloor)).toBe(true);
+      expect(JSON.stringify(plan.body)).not.toMatch(/calori|kcal|burn/i);
       expect(
         plan.body.activities.find(
           (x: { slug: string }) => x.slug === slugs.walk,

@@ -154,7 +154,7 @@ export class RecipeSectionsDto {
   @ApiProperty({ type: [MediaDto] }) media: MediaDto[];
 }
 
-class ContentBaseDto {
+export class ContentBaseDto {
   @ApiProperty() slug: string;
   @ApiProperty({ enum: SUPPORTED_LOCALES }) locale: Locale;
   @ApiProperty() version: number;

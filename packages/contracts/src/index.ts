@@ -86,6 +86,11 @@ export const Entitlement = z.object({
   premium: z.boolean(),
   status: EntitlementStatus,
   expiresAt: z.iso.datetime().nullable(),
+  /**
+   * False while the deployment runs with FEATURE_PREMIUM_LOCKS off (the default): every article,
+   * task and plan is fully accessible and clients must not show a paywall.
+   */
+  locksEnabled: z.boolean(),
 });
 export type Entitlement = z.infer<typeof Entitlement>;
 
@@ -186,6 +191,20 @@ export const Profile = z.object({
   contentTopics: z.array(z.string()).max(20),
   reducedMotion: z.boolean(),
   largerText: z.boolean(),
+  /**
+   * Local "HH:MM" window in the profile time zone when no reminder emails are sent (an
+   * occurrence inside it is skipped). Both null = no quiet hours. May cross midnight.
+   */
+  quietHoursStart: z
+    .string()
+    .regex(/^([01][0-9]|2[0-3]):[0-5][0-9]$/)
+    .nullable(),
+  quietHoursEnd: z
+    .string()
+    .regex(/^([01][0-9]|2[0-3]):[0-5][0-9]$/)
+    .nullable(),
+  /** Opt-in. Weight entries are accepted only while this is true. */
+  weightTrackingEnabled: z.boolean(),
 });
 export type Profile = z.infer<typeof Profile>;
 
@@ -281,6 +300,8 @@ export const PreparationCategory = z.enum([
   'newborn_appointments',
   'postpartum_home',
   'birth_preparation',
+  /** Recovery checklist shown in postpartum mode (weeks 1-6 after birth). */
+  'postpartum_recovery',
 ]);
 export type PreparationCategory = z.infer<typeof PreparationCategory>;
 
@@ -300,10 +321,20 @@ export const ContentCategory = z.enum([
   'newborn_care',
   'postpartum',
   'warning_signs',
+  /** Prenatal visit schedules. */
+  'prenatal_care',
 ]);
 export type ContentCategory = z.infer<typeof ContentCategory>;
 
-export const ContentKind = z.enum(['article', 'week_guide', 'recipe', 'activity', 'meal_plan']);
+export const ContentKind = z.enum([
+  'article',
+  'week_guide',
+  'recipe',
+  'activity',
+  'meal_plan',
+  'visit_schedule',
+  'postpartum_guide',
+]);
 export type ContentKind = z.infer<typeof ContentKind>;
 
 export const ArticleSummary = z.object({
@@ -707,6 +738,11 @@ export const PersonalMealPlan = z.object({
   availability: PlanAvailability,
   planSlug: z.string().nullable(),
   hydrationNote: z.string().nullable(),
+  /**
+   * Always shown with any hydration amount: "Suggested general amount; adjust with your
+   * clinician." The API never sets a calorie, weight-loss or numeric intake target of its own.
+   */
+  hydrationGuidance: z.string(),
   days: z.array(PersonalMealDay),
   /** What the plan was filtered by, so the UI can explain it. */
   filters: z.object({
@@ -721,6 +757,8 @@ export const ExercisePlan = z.object({
   availability: PlanAvailability,
   week: z.number().int().min(1).max(42).nullable(),
   activities: z.array(Activity.extend({ doneToday: z.boolean() })),
+  /** Slugs of the pelvic-floor routine among `activities` (type pelvic_floor), in order. */
+  pelvicFloor: z.array(z.string()),
   /** Always shown with the plan. */
   disclaimer: z.string(),
 });
@@ -868,3 +906,298 @@ export const ContentCoverage = z.object({
   ),
 });
 export type ContentCoverage = z.infer<typeof ContentCoverage>;
+
+// ---------------------------------------------------------------------------
+// Prenatal visit schedule and postpartum guides (structured, clinically reviewed content)
+// ---------------------------------------------------------------------------
+
+export const VisitScheduleSections = z.object({
+  trimester: Trimester,
+  /** Country the schedule was written for (ISO 3166-1 alpha-2), or null for a general one. */
+  countryCode: z
+    .string()
+    .regex(/^[A-Z]{2}$/)
+    .nullable(),
+  visits: z
+    .array(
+      z.object({
+        key: z.string().regex(/^[a-z0-9_]{1,40}$/),
+        title: z.string().min(1),
+        fromWeek: z.number().int().min(1).max(42),
+        toWeek: z.number().int().min(1).max(42),
+        /** What usually happens at this visit, as written by the reviewing clinician. */
+        purpose: z.string().min(1),
+        typicalChecks: z.array(z.string()),
+        appointmentKind: AppointmentKind,
+      }),
+    )
+    .min(1),
+});
+export type VisitScheduleSections = z.infer<typeof VisitScheduleSections>;
+
+export const VisitSchedule = ContentBase.extend({ sections: VisitScheduleSections });
+export type VisitSchedule = z.infer<typeof VisitSchedule>;
+
+/** One template visit mapped onto the caller's pregnancy dates. */
+export const PersonalVisit = z.object({
+  scheduleSlug: z.string(),
+  key: z.string(),
+  title: z.string(),
+  trimester: Trimester,
+  fromWeek: z.number().int(),
+  toWeek: z.number().int(),
+  startDate: IsoDate,
+  endDate: IsoDate,
+  status: z.enum(['past', 'current', 'upcoming']),
+  purpose: z.string(),
+  typicalChecks: z.array(z.string()),
+  appointmentKind: AppointmentKind,
+  /** The caller's appointment of the same kind inside the window, if any. */
+  bookedAppointmentId: z.uuid().nullable(),
+  /** Null when the schedule has no approving clinical review. */
+  review: ArticleReviewInfo.nullable(),
+});
+export type PersonalVisit = z.infer<typeof PersonalVisit>;
+
+export const PostpartumGuideSections = z.object({
+  /** Week after birth, 1-6. */
+  week: z.number().int().min(1).max(6),
+  body: z.string().min(1),
+  recovery: z.array(z.string()),
+  feeding: z.array(z.string()),
+  emotionalWellbeing: z.array(z.string()),
+  babyCare: z.array(z.string()),
+  whenToGetHelp: z.array(z.string()).min(1),
+  askAtCheck: z.array(z.string()),
+  checklist: z.array(z.string()),
+});
+export type PostpartumGuideSections = z.infer<typeof PostpartumGuideSections>;
+
+export const PostpartumGuide = ContentBase.extend({ sections: PostpartumGuideSections });
+export type PostpartumGuide = z.infer<typeof PostpartumGuide>;
+
+/** Postpartum mode: after a pregnancy ended with a birth. */
+export const PostpartumStatus = z.object({
+  pregnancyId: z.uuid(),
+  birthDate: IsoDate,
+  today: IsoDate,
+  daysSinceBirth: z.number().int().nonnegative(),
+  /** 1-6 during the six-week guide; null afterwards. */
+  week: z.number().int().min(1).max(6).nullable(),
+  guide: PostpartumGuide.nullable(),
+  recoveryTasks: z.array(ReadinessTask),
+  disclaimer: z.string(),
+});
+export type PostpartumStatus = z.infer<typeof PostpartumStatus>;
+
+// ---------------------------------------------------------------------------
+// Symptom checks (rule-based triage; never a diagnosis)
+// ---------------------------------------------------------------------------
+
+/**
+ * Warning-sign vocabulary for the red-flag screen. Codes and wording come from the
+ * version-controlled rules file (apps/api/src/symptoms/triage-rules.json) and its sources.
+ */
+export const RedFlagCode = z.enum([
+  'severe_headache',
+  'dizziness_or_fainting',
+  'vision_changes',
+  'fever',
+  'severe_swelling_face_hands',
+  'thoughts_of_harm',
+  'trouble_breathing',
+  'chest_pain_or_fast_heartbeat',
+  'severe_vomiting',
+  'severe_abdominal_pain',
+  'reduced_baby_movement',
+  'bleeding_or_fluid_in_pregnancy',
+  'heavy_bleeding_or_bad_smelling_discharge_after_birth',
+  'leg_swelling_redness_pain',
+  'overwhelming_tiredness',
+]);
+export type RedFlagCode = z.infer<typeof RedFlagCode>;
+
+/** Anything the symptom checker accepts: red flags plus the journal's everyday symptoms. */
+export const CheckSymptomCode = z.union([RedFlagCode, SymptomCode]);
+export type CheckSymptomCode = z.infer<typeof CheckSymptomCode>;
+
+export const TriageLevel = z.enum(['routine', 'call_clinic_today', 'emergency']);
+export type TriageLevel = z.infer<typeof TriageLevel>;
+
+export const TriageStage = z.enum(['pregnancy', 'postpartum', 'unknown']);
+export type TriageStage = z.infer<typeof TriageStage>;
+
+const TriageAction = z.object({
+  headline: z.string().min(1),
+  message: z.string().min(1),
+  /** Present for emergency and call_clinic_today; always shown first, never delayed. */
+  callToAction: z
+    .object({ label: z.string().min(1), kind: z.enum(['emergency', 'call_clinic']) })
+    .nullable(),
+});
+
+/** The version-controlled rules file, validated at boot. */
+export const TriageRuleSet = z.object({
+  version: z.string().min(1),
+  /** Null until a clinician has reviewed this version; clients then show "Not yet clinically reviewed". */
+  review: z.object({ reviewerCredentials: z.string(), reviewedAt: IsoDate }).nullable(),
+  sources: z.array(z.object({ id: z.string(), title: z.string(), url: z.url() })).min(1),
+  levels: z.object({
+    emergency: TriageAction,
+    call_clinic_today: TriageAction,
+    routine: TriageAction,
+  }),
+  symptoms: z
+    .array(
+      z.object({
+        code: RedFlagCode,
+        label: z.string().min(1),
+        stages: z.array(TriageStage.exclude(['unknown'])).min(1),
+        source: z.string(),
+      }),
+    )
+    .min(1),
+  rules: z
+    .array(
+      z.object({
+        id: z.string().regex(/^[a-z0-9_]+$/),
+        level: TriageLevel.exclude(['routine']),
+        anyOf: z.array(RedFlagCode).min(1),
+        source: z.string(),
+      }),
+    )
+    .min(1),
+  disclaimer: z.string().min(1),
+});
+export type TriageRuleSet = z.infer<typeof TriageRuleSet>;
+
+export const SymptomCheckResult = z.object({
+  /** Null when the result was not saved (no session, or no health-data consent). */
+  id: z.uuid().nullable(),
+  /**
+   * Whether the check was stored in the journal. The result itself is always returned: an
+   * emergency message is never withheld because of missing consent or a missing session.
+   */
+  saved: z.boolean(),
+  date: IsoDate,
+  symptoms: z.array(CheckSymptomCode),
+  level: TriageLevel,
+  headline: z.string(),
+  message: z.string(),
+  callToAction: TriageAction.shape.callToAction,
+  /** Rule ids that matched; empty for routine. */
+  matchedRules: z.array(z.string()),
+  /** Red flags among the selected symptoms, with their labels. */
+  redFlags: z.array(z.object({ code: RedFlagCode, label: z.string() })),
+  stage: TriageStage,
+  rulesVersion: z.string(),
+  review: z.object({ reviewerCredentials: z.string(), reviewedAt: IsoDate }).nullable(),
+  sources: z.array(z.object({ title: z.string(), url: z.url() })),
+  disclaimer: z.string(),
+  createdAt: z.iso.datetime(),
+});
+export type SymptomCheckResult = z.infer<typeof SymptomCheckResult>;
+
+/** The red-flag screen's vocabulary, for building the form. */
+export const SymptomCheckOptions = z.object({
+  rulesVersion: z.string(),
+  review: z.object({ reviewerCredentials: z.string(), reviewedAt: IsoDate }).nullable(),
+  redFlags: z.array(
+    z.object({ code: RedFlagCode, label: z.string(), stages: z.array(TriageStage) }),
+  ),
+  everyday: z.array(SymptomCode),
+  emergencyCallToAction: z.object({ label: z.string(), kind: z.literal('emergency') }),
+  disclaimer: z.string(),
+});
+export type SymptomCheckOptions = z.infer<typeof SymptomCheckOptions>;
+
+// ---------------------------------------------------------------------------
+// Kick counter and contraction timer
+// ---------------------------------------------------------------------------
+
+/** Set by the user from what their clinician told them. The app never suggests a number. */
+export const KickThreshold = z.object({
+  count: z.number().int().min(1).max(100),
+  windowMinutes: z.number().int().min(10).max(720),
+  /** Always "clinician": the label clients show next to the number. */
+  source: z.literal('clinician'),
+  updatedAt: z.iso.datetime(),
+});
+export type KickThreshold = z.infer<typeof KickThreshold>;
+
+export const KickSession = z.object({
+  id: z.uuid(),
+  date: IsoDate,
+  startedAt: z.iso.datetime(),
+  endedAt: z.iso.datetime().nullable(),
+  count: z.number().int().min(0).max(500),
+  durationSeconds: z.number().int().nonnegative().nullable(),
+  /**
+   * Compared with the clinician-set threshold once the session has ended: true when fewer
+   * movements than the threshold were counted within its window. Null without a threshold or
+   * while the session runs.
+   */
+  belowThreshold: z.boolean().nullable(),
+  /** The alert template, present whenever belowThreshold is true. */
+  alert: TriageAction.nullable(),
+});
+export type KickSession = z.infer<typeof KickSession>;
+
+export const KickDay = z.object({
+  date: IsoDate,
+  sessions: z.array(KickSession),
+  totalCount: z.number().int().nonnegative(),
+});
+
+export const KickSummary = z.object({
+  threshold: KickThreshold.nullable(),
+  /** Explains what the threshold is and who sets it. Always shown with the counter. */
+  thresholdLabel: z.string(),
+  days: z.array(KickDay),
+  disclaimer: z.string(),
+});
+export type KickSummary = z.infer<typeof KickSummary>;
+
+export const Contraction = z.object({
+  id: z.uuid(),
+  startedAt: z.iso.datetime(),
+  endedAt: z.iso.datetime().nullable(),
+  durationSeconds: z.number().int().nonnegative().nullable(),
+  /** Start-to-start time since the previous contraction that day; null for the first. */
+  intervalSeconds: z.number().int().nonnegative().nullable(),
+});
+export type Contraction = z.infer<typeof Contraction>;
+
+export const ContractionDay = z.object({
+  date: IsoDate,
+  contractions: z.array(Contraction),
+  count: z.number().int().nonnegative(),
+  averageDurationSeconds: z.number().int().nullable(),
+  averageIntervalSeconds: z.number().int().nullable(),
+  /** The standard message only: "contact your maternity unit". No advice is computed. */
+  message: z.string(),
+});
+export type ContractionDay = z.infer<typeof ContractionDay>;
+
+// ---------------------------------------------------------------------------
+// Weight tracking (opt-in; no targets, ranges or comparisons)
+// ---------------------------------------------------------------------------
+
+export const WeightEntry = z.object({
+  date: IsoDate,
+  weightKg: z.number().min(20).max(300),
+  updatedAt: z.iso.datetime(),
+});
+export type WeightEntry = z.infer<typeof WeightEntry>;
+
+export const WeightTrend = z.object({
+  enabled: z.boolean(),
+  entries: z.array(WeightEntry),
+  /** Change between the first and last entry in the range, in kg. No target or range is given. */
+  changeKg: z.number().nullable(),
+  note: z.string(),
+});
+export type WeightTrend = z.infer<typeof WeightTrend>;
+
+/** Version of the JSON bundle from POST /v1/me/export. Bumped when its shape changes. */
+export const EXPORT_FORMAT_VERSION = 2;

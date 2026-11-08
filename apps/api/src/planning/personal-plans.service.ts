@@ -25,6 +25,9 @@ import {
 import { CatalogService, toActivity } from '../content/catalog.service.js';
 import { PrismaService } from '../database/prisma.service.js';
 
+export const HYDRATION_GUIDANCE =
+  'Suggested general amount. Adjust it with your clinician, who knows your health.';
+
 export const EXERCISE_DISCLAIMER =
   'General guidance reviewed by clinicians, not an exercise prescription. Stop and contact your midwife, doctor or maternity unit if any stop sign happens. Logging an activity is for your own record; it is not medical monitoring.';
 
@@ -80,6 +83,7 @@ export class PersonalPlansService {
       availability,
       planSlug: null,
       hydrationNote: null,
+      hydrationGuidance: HYDRATION_GUIDANCE,
       days: [],
       filters,
     });
@@ -155,6 +159,7 @@ export class PersonalPlansService {
       availability: 'available',
       planSlug: chosen.slug,
       hydrationNote: chosen.sections.hydrationNote,
+      hydrationGuidance: HYDRATION_GUIDANCE,
       days,
       filters,
     };
@@ -176,6 +181,7 @@ export class PersonalPlansService {
       availability,
       week: at?.week ?? null,
       activities: [],
+      pelvicFloor: [],
       disclaimer: EXERCISE_DISCLAIMER,
     });
     if (!active || !at || !date) return empty('no_pregnancy');
@@ -204,6 +210,9 @@ export class PersonalPlansService {
         ...toActivity(r, reviews.get(r.id) ?? null),
         doneToday: doneSet.has(r.slug),
       })),
+      pelvicFloor: fitting
+        .filter((r) => (r.sections as ActivitySections).type === 'pelvic_floor')
+        .map((r) => r.slug),
       disclaimer: EXERCISE_DISCLAIMER,
     };
   }

@@ -2753,7 +2753,8 @@
                 "breastfeeding",
                 "newborn_care",
                 "postpartum",
-                "warning_signs"
+                "warning_signs",
+                "prenatal_care"
               ]
             }
           },
@@ -4649,7 +4650,9 @@
                 "week_guide",
                 "recipe",
                 "activity",
-                "meal_plan"
+                "meal_plan",
+                "visit_schedule",
+                "postpartum_guide"
               ]
             }
           }
@@ -4722,7 +4725,9 @@
                 "week_guide",
                 "recipe",
                 "activity",
-                "meal_plan"
+                "meal_plan",
+                "visit_schedule",
+                "postpartum_guide"
               ]
             }
           },
@@ -4807,7 +4812,9 @@
                 "week_guide",
                 "recipe",
                 "activity",
-                "meal_plan"
+                "meal_plan",
+                "visit_schedule",
+                "postpartum_guide"
               ]
             }
           },
@@ -5439,6 +5446,1503 @@
         ]
       }
     },
+    "/v1/symptom-checks/options": {
+      "get": {
+        "description": "Public. From the version-controlled rules file. `review` is null until a clinician has reviewed this rules version: clients must then show \"Not yet clinically reviewed\".",
+        "operationId": "SymptomChecksController_options_v1",
+        "parameters": [
+          {
+            "name": "stage",
+            "required": false,
+            "in": "query",
+            "description": "Which warning signs to offer. Default unknown (all of them). Signed-in callers can omit it.",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "pregnancy",
+                "postpartum",
+                "unknown"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SymptomCheckOptionsDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "VALIDATION_ERROR: invalid or unknown fields (see `details`)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Warning signs and wording for the red-flag screen",
+        "tags": [
+          "symptoms"
+        ]
+      }
+    },
+    "/v1/symptom-checks": {
+      "post": {
+        "description": "Rule-based triage (routine, call_clinic_today, emergency) from a fixed list; never a diagnosis. Any selected red flag escalates whatever the stage. The result is always returned. It is saved to the journal only for a signed-in owner with health_data_processing consent (`saved`).",
+        "operationId": "SymptomChecksController_check_v1",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateSymptomCheckDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SymptomCheckResultDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "VALIDATION_ERROR: invalid or unknown fields (see `details`)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "RATE_LIMITED",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {},
+          {
+            "anonymous": []
+          },
+          {
+            "session-cookie": []
+          },
+          {
+            "session-bearer": []
+          }
+        ],
+        "summary": "Check symptoms against the warning-sign rules",
+        "tags": [
+          "symptoms"
+        ]
+      },
+      "get": {
+        "description": "Journal history in a date range (at most a year), newest first. Each result is rebuilt with the wording of the rules version that is live now; `rulesVersion` records the version used at the time.",
+        "operationId": "SymptomChecksController_list_v1",
+        "parameters": [
+          {
+            "name": "from",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "format": "date",
+              "type": "string"
+            }
+          },
+          {
+            "name": "to",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "format": "date",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/SymptomCheckResultDto"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "VALIDATION_ERROR: invalid or unknown fields (see `details`)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "UNAUTHORIZED: missing, invalid or expired credentials",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session-bearer": []
+          },
+          {
+            "session-cookie": []
+          },
+          {
+            "anonymous": []
+          }
+        ],
+        "summary": "My saved symptom checks",
+        "tags": [
+          "symptoms"
+        ]
+      }
+    },
+    "/v1/kick-counts": {
+      "get": {
+        "description": "Range of at most 92 days. Sessions are compared with the threshold only when one is set.",
+        "operationId": "KickCountsController_summary_v1",
+        "parameters": [
+          {
+            "name": "from",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "format": "date",
+              "type": "string"
+            }
+          },
+          {
+            "name": "to",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "format": "date",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/KickSummaryDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "VALIDATION_ERROR: invalid or unknown fields (see `details`)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "UNAUTHORIZED: missing, invalid or expired credentials",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "NOT_FOUND: does not exist or belongs to someone else",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session-bearer": []
+          },
+          {
+            "session-cookie": []
+          },
+          {
+            "anonymous": []
+          }
+        ],
+        "summary": "Kick-count sessions by day, with the clinician-set threshold",
+        "tags": [
+          "trackers"
+        ]
+      }
+    },
+    "/v1/kick-counts/threshold": {
+      "put": {
+        "description": "The app never proposes a value. Requires health_data_processing consent and an active pregnancy.",
+        "operationId": "KickCountsController_setThreshold_v1",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PutKickThresholdDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/KickThresholdDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "VALIDATION_ERROR: invalid or unknown fields (see `details`)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "UNAUTHORIZED: missing, invalid or expired credentials",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "FORBIDDEN / CONSENT_REQUIRED / PREMIUM_REQUIRED",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "NOT_FOUND: does not exist or belongs to someone else",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session-bearer": []
+          },
+          {
+            "session-cookie": []
+          },
+          {
+            "anonymous": []
+          }
+        ],
+        "summary": "Save the threshold your clinician gave you",
+        "tags": [
+          "trackers"
+        ]
+      },
+      "delete": {
+        "operationId": "KickCountsController_clearThreshold_v1",
+        "parameters": [],
+        "responses": {
+          "204": {
+            "description": "Removed"
+          },
+          "401": {
+            "description": "UNAUTHORIZED: missing, invalid or expired credentials",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "NOT_FOUND: does not exist or belongs to someone else",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session-bearer": []
+          },
+          {
+            "session-cookie": []
+          },
+          {
+            "anonymous": []
+          }
+        ],
+        "summary": "Remove the threshold",
+        "tags": [
+          "trackers"
+        ]
+      }
+    },
+    "/v1/kick-counts/sessions": {
+      "post": {
+        "description": "Third trimester only (409 before). One running session at a time (409). Requires health_data_processing consent.",
+        "operationId": "KickCountsController_start_v1",
+        "parameters": [],
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/KickSessionDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "UNAUTHORIZED: missing, invalid or expired credentials",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "FORBIDDEN / CONSENT_REQUIRED / PREMIUM_REQUIRED",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "NOT_FOUND: does not exist or belongs to someone else",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "CONFLICT: duplicate or overlapping record",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session-bearer": []
+          },
+          {
+            "session-cookie": []
+          },
+          {
+            "anonymous": []
+          }
+        ],
+        "summary": "Start a kick-count session",
+        "tags": [
+          "trackers"
+        ]
+      }
+    },
+    "/v1/kick-counts/sessions/{id}/kicks": {
+      "post": {
+        "description": "Only while the session runs (409 after it stopped).",
+        "operationId": "KickCountsController_kick_v1",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/KickSessionDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "VALIDATION_ERROR: invalid or unknown fields (see `details`)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "UNAUTHORIZED: missing, invalid or expired credentials",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "FORBIDDEN / CONSENT_REQUIRED / PREMIUM_REQUIRED",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "NOT_FOUND: does not exist or belongs to someone else",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "CONFLICT: duplicate or overlapping record",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session-bearer": []
+          },
+          {
+            "session-cookie": []
+          },
+          {
+            "anonymous": []
+          }
+        ],
+        "summary": "Count one movement",
+        "tags": [
+          "trackers"
+        ]
+      }
+    },
+    "/v1/kick-counts/sessions/{id}/stop": {
+      "post": {
+        "description": "Returns the session compared with the threshold; `alert` is set when the count is below it. Stopping twice returns the same result.",
+        "operationId": "KickCountsController_stop_v1",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/KickSessionDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "VALIDATION_ERROR: invalid or unknown fields (see `details`)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "UNAUTHORIZED: missing, invalid or expired credentials",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "FORBIDDEN / CONSENT_REQUIRED / PREMIUM_REQUIRED",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "NOT_FOUND: does not exist or belongs to someone else",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session-bearer": []
+          },
+          {
+            "session-cookie": []
+          },
+          {
+            "anonymous": []
+          }
+        ],
+        "summary": "Stop a session",
+        "tags": [
+          "trackers"
+        ]
+      }
+    },
+    "/v1/kick-counts/sessions/{id}": {
+      "delete": {
+        "operationId": "KickCountsController_remove_v1",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Deleted"
+          },
+          "400": {
+            "description": "VALIDATION_ERROR: invalid or unknown fields (see `details`)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "UNAUTHORIZED: missing, invalid or expired credentials",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "NOT_FOUND: does not exist or belongs to someone else",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session-bearer": []
+          },
+          {
+            "session-cookie": []
+          },
+          {
+            "anonymous": []
+          }
+        ],
+        "summary": "Delete a session",
+        "tags": [
+          "trackers"
+        ]
+      }
+    },
+    "/v1/contractions": {
+      "get": {
+        "description": "Computes duration and start-to-start interval only. The response carries one standard message (\"contact your maternity unit\"); no other advice is given.",
+        "operationId": "ContractionsController_day_v1",
+        "parameters": [
+          {
+            "name": "date",
+            "required": false,
+            "in": "query",
+            "description": "Default: today in the profile's time zone",
+            "schema": {
+              "format": "date",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ContractionDayDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "VALIDATION_ERROR: invalid or unknown fields (see `details`)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "UNAUTHORIZED: missing, invalid or expired credentials",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session-bearer": []
+          },
+          {
+            "session-cookie": []
+          },
+          {
+            "anonymous": []
+          }
+        ],
+        "summary": "A day's contractions with durations and intervals",
+        "tags": [
+          "trackers"
+        ]
+      },
+      "post": {
+        "description": "Without a body it starts now. Times may be up to 12 hours in the past and never in the future. Requires health_data_processing consent. 409 for a duplicate start time.",
+        "operationId": "ContractionsController_start_v1",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/StartContractionDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ContractionDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "VALIDATION_ERROR: invalid or unknown fields (see `details`)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "UNAUTHORIZED: missing, invalid or expired credentials",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "FORBIDDEN / CONSENT_REQUIRED / PREMIUM_REQUIRED",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "CONFLICT: duplicate or overlapping record",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session-bearer": []
+          },
+          {
+            "session-cookie": []
+          },
+          {
+            "anonymous": []
+          }
+        ],
+        "summary": "Record a contraction (start now, or a finished one)",
+        "tags": [
+          "trackers"
+        ]
+      }
+    },
+    "/v1/contractions/{id}/stop": {
+      "post": {
+        "description": "Stopping twice keeps the first end time.",
+        "operationId": "ContractionsController_stop_v1",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ContractionDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "VALIDATION_ERROR: invalid or unknown fields (see `details`)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "UNAUTHORIZED: missing, invalid or expired credentials",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "FORBIDDEN / CONSENT_REQUIRED / PREMIUM_REQUIRED",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "NOT_FOUND: does not exist or belongs to someone else",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session-bearer": []
+          },
+          {
+            "session-cookie": []
+          },
+          {
+            "anonymous": []
+          }
+        ],
+        "summary": "Stop a running contraction",
+        "tags": [
+          "trackers"
+        ]
+      }
+    },
+    "/v1/contractions/{id}": {
+      "delete": {
+        "operationId": "ContractionsController_remove_v1",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Deleted"
+          },
+          "400": {
+            "description": "VALIDATION_ERROR: invalid or unknown fields (see `details`)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "UNAUTHORIZED: missing, invalid or expired credentials",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "NOT_FOUND: does not exist or belongs to someone else",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session-bearer": []
+          },
+          {
+            "session-cookie": []
+          },
+          {
+            "anonymous": []
+          }
+        ],
+        "summary": "Delete a contraction",
+        "tags": [
+          "trackers"
+        ]
+      }
+    },
+    "/v1/weight-entries": {
+      "get": {
+        "description": "Entries in a range of at most a year, oldest first. Entries saved earlier stay readable after opting out.",
+        "operationId": "WeightController_trend_v1",
+        "parameters": [
+          {
+            "name": "from",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "format": "date",
+              "type": "string"
+            }
+          },
+          {
+            "name": "to",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "format": "date",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WeightTrendDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "VALIDATION_ERROR: invalid or unknown fields (see `details`)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "UNAUTHORIZED: missing, invalid or expired credentials",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session-bearer": []
+          },
+          {
+            "session-cookie": []
+          },
+          {
+            "anonymous": []
+          }
+        ],
+        "summary": "My weight entries and trend (opt-in)",
+        "tags": [
+          "weight"
+        ]
+      }
+    },
+    "/v1/weight-entries/{date}": {
+      "put": {
+        "description": "Only after opting in (`weightTrackingEnabled` on the profile; 409 otherwise). Requires health_data_processing consent. Future dates are rejected.",
+        "operationId": "WeightController_put_v1",
+        "parameters": [
+          {
+            "name": "date",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "format": "date",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PutWeightDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WeightEntryDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "VALIDATION_ERROR: invalid or unknown fields (see `details`)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "UNAUTHORIZED: missing, invalid or expired credentials",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "FORBIDDEN / CONSENT_REQUIRED / PREMIUM_REQUIRED",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "CONFLICT: duplicate or overlapping record",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session-bearer": []
+          },
+          {
+            "session-cookie": []
+          },
+          {
+            "anonymous": []
+          }
+        ],
+        "summary": "Save the weight for a day",
+        "tags": [
+          "weight"
+        ]
+      },
+      "delete": {
+        "operationId": "WeightController_remove_v1",
+        "parameters": [
+          {
+            "name": "date",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "format": "date",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Deleted"
+          },
+          "400": {
+            "description": "VALIDATION_ERROR: invalid or unknown fields (see `details`)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "UNAUTHORIZED: missing, invalid or expired credentials",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "NOT_FOUND: does not exist or belongs to someone else",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session-bearer": []
+          },
+          {
+            "session-cookie": []
+          },
+          {
+            "anonymous": []
+          }
+        ],
+        "summary": "Delete the weight for a day",
+        "tags": [
+          "weight"
+        ]
+      }
+    },
+    "/v1/visit-schedules": {
+      "get": {
+        "description": "Public. Clinically reviewed templates, one or more per trimester. With countryCode, schedules for that country and general ones.",
+        "operationId": "JourneyController_visitSchedules_v1",
+        "parameters": [
+          {
+            "name": "locale",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "default": "en",
+              "type": "string",
+              "enum": [
+                "en"
+              ]
+            }
+          },
+          {
+            "name": "countryCode",
+            "required": false,
+            "in": "query",
+            "description": "ISO 3166-1 alpha-2; also returns general schedules",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/VisitScheduleDto"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "VALIDATION_ERROR: invalid or unknown fields (see `details`)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Published prenatal visit schedules",
+        "tags": [
+          "pregnancy"
+        ]
+      }
+    },
+    "/v1/pregnancies/current/visit-schedule": {
+      "get": {
+        "description": "Published visit templates mapped onto the active pregnancy's weeks, with any appointment of the same kind booked in each window. Uses the profile country's schedule when one exists, else the general one. Empty when none is published.",
+        "operationId": "JourneyController_myVisits_v1",
+        "parameters": [
+          {
+            "name": "locale",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "default": "en",
+              "type": "string",
+              "enum": [
+                "en"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/PersonalVisitDto"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "UNAUTHORIZED: missing, invalid or expired credentials",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "NOT_FOUND: does not exist or belongs to someone else",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session-bearer": []
+          },
+          {
+            "session-cookie": []
+          },
+          {
+            "anonymous": []
+          }
+        ],
+        "summary": "The prenatal visit schedule on my pregnancy dates",
+        "tags": [
+          "pregnancy"
+        ]
+      }
+    },
+    "/v1/postpartum-guides/{week}": {
+      "get": {
+        "operationId": "JourneyController_postpartumGuide_v1",
+        "parameters": [
+          {
+            "name": "week",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          },
+          {
+            "name": "locale",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "default": "en",
+              "type": "string",
+              "enum": [
+                "en"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PostpartumGuideDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "VALIDATION_ERROR: invalid or unknown fields (see `details`)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "NOT_FOUND: does not exist or belongs to someone else",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Published postpartum guide for a week after birth (1-6)",
+        "tags": [
+          "pregnancy"
+        ]
+      }
+    },
+    "/v1/postpartum": {
+      "get": {
+        "description": "After a pregnancy ended with a birth (within the last year). Week 1-6 after birth with that week's published guide (or null), and the recovery checklist (readiness tasks in the postpartum_recovery category) with my progress. 404 when there is no recent birth.",
+        "operationId": "JourneyController_postpartum_v1",
+        "parameters": [
+          {
+            "name": "locale",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "default": "en",
+              "type": "string",
+              "enum": [
+                "en"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PostpartumStatusDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "UNAUTHORIZED: missing, invalid or expired credentials",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "NOT_FOUND: does not exist or belongs to someone else",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session-bearer": []
+          },
+          {
+            "session-cookie": []
+          },
+          {
+            "anonymous": []
+          }
+        ],
+        "summary": "Postpartum mode: the weeks after a birth",
+        "tags": [
+          "pregnancy"
+        ]
+      }
+    },
     "/v1/me/export": {
       "post": {
         "description": "Machine-readable JSON of everything stored for the caller. Limited to 3 per hour.",
@@ -5690,7 +7194,9 @@
                 "week_guide",
                 "recipe",
                 "activity",
-                "meal_plan"
+                "meal_plan",
+                "visit_schedule",
+                "postpartum_guide"
               ]
             }
           },
@@ -5714,7 +7220,8 @@
                 "breastfeeding",
                 "newborn_care",
                 "postpartum",
-                "warning_signs"
+                "warning_signs",
+                "prenatal_care"
               ]
             }
           },
@@ -6629,6 +8136,168 @@
           }
         ],
         "summary": "Create a meal plan draft",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
+    "/v1/admin/visit-schedules": {
+      "post": {
+        "description": "Roles: content_editor, administrator. `sections` must match VisitScheduleSections (visits with week windows, purpose and typical checks, written by the clinical team). Use category prenatal_care. Review and publish with /admin/articles/{id}/….",
+        "operationId": "AdminStructuredController_visitSchedule_v1",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateStructuredContentDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminArticleDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "VALIDATION_ERROR: invalid or unknown fields (see `details`)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "UNAUTHORIZED: missing, invalid or expired credentials",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "FORBIDDEN / CONSENT_REQUIRED / PREMIUM_REQUIRED\n\nFORBIDDEN / CONSENT_REQUIRED / PREMIUM_REQUIRED",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "CONFLICT: duplicate or overlapping record",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session-bearer": []
+          },
+          {
+            "session-cookie": []
+          }
+        ],
+        "summary": "Create a prenatal visit schedule draft (one per trimester)",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
+    "/v1/admin/postpartum-guides": {
+      "post": {
+        "description": "Roles: content_editor, administrator. `sections` must match PostpartumGuideSections; the slug must be \"postpartum-week-<sections.week>\". Use category postpartum. Review and publish with /admin/articles/{id}/….",
+        "operationId": "AdminStructuredController_postpartumGuide_v1",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateStructuredContentDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminArticleDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "VALIDATION_ERROR: invalid or unknown fields (see `details`)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "UNAUTHORIZED: missing, invalid or expired credentials",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "FORBIDDEN / CONSENT_REQUIRED / PREMIUM_REQUIRED\n\nFORBIDDEN / CONSENT_REQUIRED / PREMIUM_REQUIRED",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "CONFLICT: duplicate or overlapping record",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session-bearer": []
+          },
+          {
+            "session-cookie": []
+          }
+        ],
+        "summary": "Create a postpartum week guide draft (weeks 1-6 after birth)",
         "tags": [
           "admin"
         ]
@@ -11003,12 +12672,17 @@
             "type": "string",
             "nullable": true,
             "format": "date-time"
+          },
+          "locksEnabled": {
+            "type": "boolean",
+            "description": "FEATURE_PREMIUM_LOCKS. False (the default): nothing is locked; show no paywall."
           }
         },
         "required": [
           "premium",
           "status",
-          "expiresAt"
+          "expiresAt",
+          "locksEnabled"
         ]
       },
       "ProfileDto": {
@@ -11128,6 +12802,22 @@
           "largerText": {
             "type": "boolean",
             "description": "Prefer larger text in the app"
+          },
+          "quietHoursStart": {
+            "type": "string",
+            "nullable": true,
+            "example": "22:00",
+            "description": "Quiet hours start (\"HH:MM\", profile time zone). No reminder emails are sent inside the window; set both or neither. Kept when omitted."
+          },
+          "quietHoursEnd": {
+            "type": "string",
+            "nullable": true,
+            "example": "07:00",
+            "description": "Quiet hours end (\"HH:MM\"). May be earlier than the start (crosses midnight)."
+          },
+          "weightTrackingEnabled": {
+            "type": "boolean",
+            "description": "Opt in to weight tracking. Kept when omitted. Turning it off stops new entries; saved ones stay until deleted."
           }
         },
         "required": [
@@ -12668,7 +14358,8 @@
               "breastfeeding",
               "newborn_care",
               "postpartum",
-              "warning_signs"
+              "warning_signs",
+              "prenatal_care"
             ],
             "nullable": true
           },
@@ -12796,7 +14487,8 @@
               "breastfeeding",
               "newborn_care",
               "postpartum",
-              "warning_signs"
+              "warning_signs",
+              "prenatal_care"
             ],
             "nullable": true
           },
@@ -13177,7 +14869,8 @@
               "breastfeeding",
               "newborn_care",
               "postpartum",
-              "warning_signs"
+              "warning_signs",
+              "prenatal_care"
             ],
             "nullable": true
           },
@@ -13410,7 +15103,8 @@
               "breastfeeding",
               "newborn_care",
               "postpartum",
-              "warning_signs"
+              "warning_signs",
+              "prenatal_care"
             ],
             "nullable": true
           },
@@ -13622,7 +15316,8 @@
               "breastfeeding",
               "newborn_care",
               "postpartum",
-              "warning_signs"
+              "warning_signs",
+              "prenatal_care"
             ],
             "nullable": true
           },
@@ -13825,6 +15520,10 @@
             "type": "string",
             "nullable": true
           },
+          "hydrationGuidance": {
+            "type": "string",
+            "description": "Shown with any hydration amount: adjust with your clinician"
+          },
           "days": {
             "type": "array",
             "items": {
@@ -13839,6 +15538,7 @@
           "availability",
           "planSlug",
           "hydrationNote",
+          "hydrationGuidance",
           "days",
           "filters"
         ]
@@ -14015,7 +15715,8 @@
               "breastfeeding",
               "newborn_care",
               "postpartum",
-              "warning_signs"
+              "warning_signs",
+              "prenatal_care"
             ],
             "nullable": true
           },
@@ -14108,6 +15809,13 @@
               "$ref": "#/components/schemas/PlannedActivityDto"
             }
           },
+          "pelvicFloor": {
+            "description": "Slugs of the pelvic-floor routine among activities (type pelvic_floor)",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
           "disclaimer": {
             "type": "string"
           }
@@ -14116,6 +15824,7 @@
           "availability",
           "week",
           "activities",
+          "pelvicFloor",
           "disclaimer"
         ]
       },
@@ -14171,7 +15880,9 @@
               "week_guide",
               "recipe",
               "activity",
-              "meal_plan"
+              "meal_plan",
+              "visit_schedule",
+              "postpartum_guide"
             ]
           },
           "slug": {
@@ -14461,12 +16172,1247 @@
           "done"
         ]
       },
+      "ReviewDto": {
+        "type": "object",
+        "properties": {
+          "reviewerCredentials": {
+            "type": "string"
+          },
+          "reviewedAt": {
+            "type": "string",
+            "format": "date"
+          }
+        },
+        "required": [
+          "reviewerCredentials",
+          "reviewedAt"
+        ]
+      },
+      "RedFlagOptionDto": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "string",
+            "enum": [
+              "severe_headache",
+              "dizziness_or_fainting",
+              "vision_changes",
+              "fever",
+              "severe_swelling_face_hands",
+              "thoughts_of_harm",
+              "trouble_breathing",
+              "chest_pain_or_fast_heartbeat",
+              "severe_vomiting",
+              "severe_abdominal_pain",
+              "reduced_baby_movement",
+              "bleeding_or_fluid_in_pregnancy",
+              "heavy_bleeding_or_bad_smelling_discharge_after_birth",
+              "leg_swelling_redness_pain",
+              "overwhelming_tiredness"
+            ]
+          },
+          "label": {
+            "type": "string"
+          },
+          "stages": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "pregnancy",
+                "postpartum",
+                "unknown"
+              ]
+            }
+          }
+        },
+        "required": [
+          "code",
+          "label",
+          "stages"
+        ]
+      },
+      "CallToActionDto": {
+        "type": "object",
+        "properties": {
+          "label": {
+            "type": "string"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "emergency",
+              "call_clinic"
+            ]
+          }
+        },
+        "required": [
+          "label",
+          "kind"
+        ]
+      },
+      "SymptomCheckOptionsDto": {
+        "type": "object",
+        "properties": {
+          "rulesVersion": {
+            "type": "string"
+          },
+          "review": {
+            "nullable": true,
+            "description": "Null: show \"Not yet clinically reviewed\"",
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ReviewDto"
+              }
+            ]
+          },
+          "redFlags": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RedFlagOptionDto"
+            }
+          },
+          "everyday": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "cramps",
+                "headache",
+                "bloating",
+                "breast_tenderness",
+                "fatigue",
+                "acne",
+                "nausea",
+                "back_pain",
+                "mood_low",
+                "mood_irritable",
+                "spotting",
+                "discharge_change",
+                "insomnia",
+                "appetite_change"
+              ]
+            }
+          },
+          "emergencyCallToAction": {
+            "$ref": "#/components/schemas/CallToActionDto"
+          },
+          "disclaimer": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "rulesVersion",
+          "review",
+          "redFlags",
+          "everyday",
+          "emergencyCallToAction",
+          "disclaimer"
+        ]
+      },
+      "CreateSymptomCheckDto": {
+        "type": "object",
+        "properties": {
+          "symptoms": {
+            "type": "array",
+            "description": "Red-flag codes and/or everyday journal symptom codes (fixed vocabulary).",
+            "example": [
+              "severe_headache",
+              "nausea"
+            ],
+            "items": {
+              "type": "string",
+              "enum": [
+                "severe_headache",
+                "dizziness_or_fainting",
+                "vision_changes",
+                "fever",
+                "severe_swelling_face_hands",
+                "thoughts_of_harm",
+                "trouble_breathing",
+                "chest_pain_or_fast_heartbeat",
+                "severe_vomiting",
+                "severe_abdominal_pain",
+                "reduced_baby_movement",
+                "bleeding_or_fluid_in_pregnancy",
+                "heavy_bleeding_or_bad_smelling_discharge_after_birth",
+                "leg_swelling_redness_pain",
+                "overwhelming_tiredness",
+                "cramps",
+                "headache",
+                "bloating",
+                "breast_tenderness",
+                "fatigue",
+                "acne",
+                "nausea",
+                "back_pain",
+                "mood_low",
+                "mood_irritable",
+                "spotting",
+                "discharge_change",
+                "insomnia",
+                "appetite_change"
+              ]
+            }
+          }
+        },
+        "required": [
+          "symptoms"
+        ]
+      },
+      "RedFlagDto": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "string",
+            "enum": [
+              "severe_headache",
+              "dizziness_or_fainting",
+              "vision_changes",
+              "fever",
+              "severe_swelling_face_hands",
+              "thoughts_of_harm",
+              "trouble_breathing",
+              "chest_pain_or_fast_heartbeat",
+              "severe_vomiting",
+              "severe_abdominal_pain",
+              "reduced_baby_movement",
+              "bleeding_or_fluid_in_pregnancy",
+              "heavy_bleeding_or_bad_smelling_discharge_after_birth",
+              "leg_swelling_redness_pain",
+              "overwhelming_tiredness"
+            ]
+          },
+          "label": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "code",
+          "label"
+        ]
+      },
+      "SourceDto": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string"
+          },
+          "url": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "title",
+          "url"
+        ]
+      },
+      "SymptomCheckResultDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "saved": {
+            "type": "boolean",
+            "description": "Whether it was stored in the journal. The result is returned either way."
+          },
+          "date": {
+            "type": "string",
+            "format": "date"
+          },
+          "symptoms": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "severe_headache",
+                "dizziness_or_fainting",
+                "vision_changes",
+                "fever",
+                "severe_swelling_face_hands",
+                "thoughts_of_harm",
+                "trouble_breathing",
+                "chest_pain_or_fast_heartbeat",
+                "severe_vomiting",
+                "severe_abdominal_pain",
+                "reduced_baby_movement",
+                "bleeding_or_fluid_in_pregnancy",
+                "heavy_bleeding_or_bad_smelling_discharge_after_birth",
+                "leg_swelling_redness_pain",
+                "overwhelming_tiredness",
+                "cramps",
+                "headache",
+                "bloating",
+                "breast_tenderness",
+                "fatigue",
+                "acne",
+                "nausea",
+                "back_pain",
+                "mood_low",
+                "mood_irritable",
+                "spotting",
+                "discharge_change",
+                "insomnia",
+                "appetite_change"
+              ]
+            }
+          },
+          "level": {
+            "type": "string",
+            "enum": [
+              "routine",
+              "call_clinic_today",
+              "emergency"
+            ]
+          },
+          "headline": {
+            "type": "string"
+          },
+          "message": {
+            "type": "string"
+          },
+          "callToAction": {
+            "nullable": true,
+            "description": "Shown first, immediately. Null only for routine.",
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/CallToActionDto"
+              }
+            ]
+          },
+          "matchedRules": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "redFlags": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RedFlagDto"
+            }
+          },
+          "stage": {
+            "type": "string",
+            "enum": [
+              "pregnancy",
+              "postpartum",
+              "unknown"
+            ]
+          },
+          "rulesVersion": {
+            "type": "string"
+          },
+          "review": {
+            "nullable": true,
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ReviewDto"
+              }
+            ]
+          },
+          "sources": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SourceDto"
+            }
+          },
+          "disclaimer": {
+            "type": "string"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "saved",
+          "date",
+          "symptoms",
+          "level",
+          "headline",
+          "message",
+          "callToAction",
+          "matchedRules",
+          "redFlags",
+          "stage",
+          "rulesVersion",
+          "review",
+          "sources",
+          "disclaimer",
+          "createdAt"
+        ]
+      },
+      "KickThresholdDto": {
+        "type": "object",
+        "properties": {
+          "count": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 100
+          },
+          "windowMinutes": {
+            "type": "number",
+            "minimum": 10,
+            "maximum": 720
+          },
+          "source": {
+            "type": "string",
+            "enum": [
+              "clinician"
+            ]
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "count",
+          "windowMinutes",
+          "source",
+          "updatedAt"
+        ]
+      },
+      "AlertCtaDto": {
+        "type": "object",
+        "properties": {
+          "label": {
+            "type": "string"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "emergency",
+              "call_clinic"
+            ]
+          }
+        },
+        "required": [
+          "label",
+          "kind"
+        ]
+      },
+      "AlertDto": {
+        "type": "object",
+        "properties": {
+          "headline": {
+            "type": "string"
+          },
+          "message": {
+            "type": "string"
+          },
+          "callToAction": {
+            "nullable": true,
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/AlertCtaDto"
+              }
+            ]
+          }
+        },
+        "required": [
+          "headline",
+          "message",
+          "callToAction"
+        ]
+      },
+      "KickSessionDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "date": {
+            "type": "string",
+            "format": "date"
+          },
+          "startedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "endedAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "count": {
+            "type": "number"
+          },
+          "durationSeconds": {
+            "type": "number",
+            "nullable": true
+          },
+          "belowThreshold": {
+            "type": "boolean",
+            "nullable": true,
+            "description": "true: the clinician window passed with fewer movements. null: no threshold, running, or incomplete."
+          },
+          "alert": {
+            "nullable": true,
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/AlertDto"
+              }
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "date",
+          "startedAt",
+          "endedAt",
+          "count",
+          "durationSeconds",
+          "belowThreshold",
+          "alert"
+        ]
+      },
+      "KickDayDto": {
+        "type": "object",
+        "properties": {
+          "date": {
+            "type": "string",
+            "format": "date"
+          },
+          "sessions": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/KickSessionDto"
+            }
+          },
+          "totalCount": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "date",
+          "sessions",
+          "totalCount"
+        ]
+      },
+      "KickSummaryDto": {
+        "type": "object",
+        "properties": {
+          "threshold": {
+            "nullable": true,
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/KickThresholdDto"
+              }
+            ]
+          },
+          "thresholdLabel": {
+            "type": "string"
+          },
+          "days": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/KickDayDto"
+            }
+          },
+          "disclaimer": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "threshold",
+          "thresholdLabel",
+          "days",
+          "disclaimer"
+        ]
+      },
+      "PutKickThresholdDto": {
+        "type": "object",
+        "properties": {
+          "count": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 100,
+            "description": "Movements your clinician asked you to feel"
+          },
+          "windowMinutes": {
+            "type": "number",
+            "minimum": 10,
+            "maximum": 720,
+            "description": "Within this many minutes, as your clinician told you"
+          }
+        },
+        "required": [
+          "count",
+          "windowMinutes"
+        ]
+      },
+      "ContractionDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "startedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "endedAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "durationSeconds": {
+            "type": "number",
+            "nullable": true
+          },
+          "intervalSeconds": {
+            "type": "number",
+            "nullable": true,
+            "description": "Start-to-start since the previous one that day"
+          }
+        },
+        "required": [
+          "id",
+          "startedAt",
+          "endedAt",
+          "durationSeconds",
+          "intervalSeconds"
+        ]
+      },
+      "ContractionDayDto": {
+        "type": "object",
+        "properties": {
+          "date": {
+            "type": "string",
+            "format": "date"
+          },
+          "contractions": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ContractionDto"
+            }
+          },
+          "count": {
+            "type": "number"
+          },
+          "averageDurationSeconds": {
+            "type": "number",
+            "nullable": true
+          },
+          "averageIntervalSeconds": {
+            "type": "number",
+            "nullable": true
+          },
+          "message": {
+            "type": "string",
+            "description": "The standard \"contact your maternity unit\" message"
+          }
+        },
+        "required": [
+          "date",
+          "contractions",
+          "count",
+          "averageDurationSeconds",
+          "averageIntervalSeconds",
+          "message"
+        ]
+      },
+      "StartContractionDto": {
+        "type": "object",
+        "properties": {
+          "startedAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Default: now. Up to 12 hours in the past, for one recorded late; never in the future."
+          },
+          "endedAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "When it ended, if it is already over"
+          }
+        }
+      },
+      "WeightEntryDto": {
+        "type": "object",
+        "properties": {
+          "date": {
+            "type": "string",
+            "format": "date"
+          },
+          "weightKg": {
+            "type": "number",
+            "minimum": 20,
+            "maximum": 300
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "date",
+          "weightKg",
+          "updatedAt"
+        ]
+      },
+      "WeightTrendDto": {
+        "type": "object",
+        "properties": {
+          "enabled": {
+            "type": "boolean",
+            "description": "The opt-in setting on the profile"
+          },
+          "entries": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/WeightEntryDto"
+            }
+          },
+          "changeKg": {
+            "type": "number",
+            "nullable": true,
+            "description": "Last minus first entry in the range (kg). No target."
+          },
+          "note": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "enabled",
+          "entries",
+          "changeKg",
+          "note"
+        ]
+      },
+      "PutWeightDto": {
+        "type": "object",
+        "properties": {
+          "weightKg": {
+            "type": "number",
+            "minimum": 20,
+            "maximum": 300,
+            "example": 64.5
+          }
+        },
+        "required": [
+          "weightKg"
+        ]
+      },
+      "VisitDto": {
+        "type": "object",
+        "properties": {
+          "key": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "fromWeek": {
+            "type": "number"
+          },
+          "toWeek": {
+            "type": "number"
+          },
+          "purpose": {
+            "type": "string"
+          },
+          "typicalChecks": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "appointmentKind": {
+            "type": "string",
+            "enum": [
+              "antenatal",
+              "scan",
+              "blood_test",
+              "glucose_test",
+              "specialist",
+              "postnatal",
+              "newborn_check",
+              "other"
+            ]
+          }
+        },
+        "required": [
+          "key",
+          "title",
+          "fromWeek",
+          "toWeek",
+          "purpose",
+          "typicalChecks",
+          "appointmentKind"
+        ]
+      },
+      "VisitScheduleSectionsDto": {
+        "type": "object",
+        "properties": {
+          "trimester": {
+            "type": "number",
+            "enum": [
+              1,
+              2,
+              3
+            ]
+          },
+          "countryCode": {
+            "type": "string",
+            "nullable": true
+          },
+          "visits": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/VisitDto"
+            }
+          }
+        },
+        "required": [
+          "trimester",
+          "countryCode",
+          "visits"
+        ]
+      },
+      "VisitScheduleDto": {
+        "type": "object",
+        "properties": {
+          "slug": {
+            "type": "string"
+          },
+          "locale": {
+            "type": "string",
+            "enum": [
+              "en"
+            ]
+          },
+          "version": {
+            "type": "number"
+          },
+          "title": {
+            "type": "string"
+          },
+          "summary": {
+            "type": "string"
+          },
+          "category": {
+            "type": "string",
+            "enum": [
+              "pregnancy",
+              "trimester_guide",
+              "nutrition",
+              "food_safety",
+              "exercise",
+              "physical_wellbeing",
+              "mental_wellbeing",
+              "baby_development",
+              "birth_preparation",
+              "hospital_bag",
+              "breastfeeding",
+              "newborn_care",
+              "postpartum",
+              "warning_signs",
+              "prenatal_care"
+            ],
+            "nullable": true
+          },
+          "trimester": {
+            "type": "number",
+            "enum": [
+              1,
+              2,
+              3
+            ],
+            "nullable": true
+          },
+          "tags": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "references": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ReferenceDto"
+            }
+          },
+          "review": {
+            "nullable": true,
+            "description": "The approving clinical review. Null means not shown as reviewed.",
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ArticleReviewDto"
+              }
+            ]
+          },
+          "publishedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "nextReviewDue": {
+            "type": "string",
+            "format": "date",
+            "nullable": true
+          },
+          "sections": {
+            "$ref": "#/components/schemas/VisitScheduleSectionsDto"
+          }
+        },
+        "required": [
+          "slug",
+          "locale",
+          "version",
+          "title",
+          "summary",
+          "category",
+          "trimester",
+          "tags",
+          "references",
+          "review",
+          "publishedAt",
+          "nextReviewDue",
+          "sections"
+        ]
+      },
+      "PersonalVisitDto": {
+        "type": "object",
+        "properties": {
+          "scheduleSlug": {
+            "type": "string"
+          },
+          "key": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "trimester": {
+            "type": "number",
+            "enum": [
+              1,
+              2,
+              3
+            ]
+          },
+          "fromWeek": {
+            "type": "number"
+          },
+          "toWeek": {
+            "type": "number"
+          },
+          "startDate": {
+            "type": "string",
+            "format": "date"
+          },
+          "endDate": {
+            "type": "string",
+            "format": "date"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "past",
+              "current",
+              "upcoming"
+            ]
+          },
+          "purpose": {
+            "type": "string"
+          },
+          "typicalChecks": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "appointmentKind": {
+            "type": "string",
+            "enum": [
+              "antenatal",
+              "scan",
+              "blood_test",
+              "glucose_test",
+              "specialist",
+              "postnatal",
+              "newborn_check",
+              "other"
+            ]
+          },
+          "bookedAppointmentId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "review": {
+            "nullable": true,
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ArticleReviewDto"
+              }
+            ]
+          }
+        },
+        "required": [
+          "scheduleSlug",
+          "key",
+          "title",
+          "trimester",
+          "fromWeek",
+          "toWeek",
+          "startDate",
+          "endDate",
+          "status",
+          "purpose",
+          "typicalChecks",
+          "appointmentKind",
+          "bookedAppointmentId",
+          "review"
+        ]
+      },
+      "PostpartumSectionsDto": {
+        "type": "object",
+        "properties": {
+          "week": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 6
+          },
+          "body": {
+            "type": "string"
+          },
+          "recovery": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "feeding": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "emotionalWellbeing": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "babyCare": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "whenToGetHelp": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "askAtCheck": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "checklist": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "week",
+          "body",
+          "recovery",
+          "feeding",
+          "emotionalWellbeing",
+          "babyCare",
+          "whenToGetHelp",
+          "askAtCheck",
+          "checklist"
+        ]
+      },
+      "PostpartumGuideDto": {
+        "type": "object",
+        "properties": {
+          "slug": {
+            "type": "string"
+          },
+          "locale": {
+            "type": "string",
+            "enum": [
+              "en"
+            ]
+          },
+          "version": {
+            "type": "number"
+          },
+          "title": {
+            "type": "string"
+          },
+          "summary": {
+            "type": "string"
+          },
+          "category": {
+            "type": "string",
+            "enum": [
+              "pregnancy",
+              "trimester_guide",
+              "nutrition",
+              "food_safety",
+              "exercise",
+              "physical_wellbeing",
+              "mental_wellbeing",
+              "baby_development",
+              "birth_preparation",
+              "hospital_bag",
+              "breastfeeding",
+              "newborn_care",
+              "postpartum",
+              "warning_signs",
+              "prenatal_care"
+            ],
+            "nullable": true
+          },
+          "trimester": {
+            "type": "number",
+            "enum": [
+              1,
+              2,
+              3
+            ],
+            "nullable": true
+          },
+          "tags": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "references": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ReferenceDto"
+            }
+          },
+          "review": {
+            "nullable": true,
+            "description": "The approving clinical review. Null means not shown as reviewed.",
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ArticleReviewDto"
+              }
+            ]
+          },
+          "publishedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "nextReviewDue": {
+            "type": "string",
+            "format": "date",
+            "nullable": true
+          },
+          "sections": {
+            "$ref": "#/components/schemas/PostpartumSectionsDto"
+          }
+        },
+        "required": [
+          "slug",
+          "locale",
+          "version",
+          "title",
+          "summary",
+          "category",
+          "trimester",
+          "tags",
+          "references",
+          "review",
+          "publishedAt",
+          "nextReviewDue",
+          "sections"
+        ]
+      },
+      "PostpartumStatusDto": {
+        "type": "object",
+        "properties": {
+          "pregnancyId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "birthDate": {
+            "type": "string",
+            "format": "date"
+          },
+          "today": {
+            "type": "string",
+            "format": "date"
+          },
+          "daysSinceBirth": {
+            "type": "number"
+          },
+          "week": {
+            "type": "number",
+            "nullable": true,
+            "description": "1-6, null after six weeks"
+          },
+          "guide": {
+            "nullable": true,
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/PostpartumGuideDto"
+              }
+            ]
+          },
+          "recoveryTasks": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ReadinessTaskDto"
+            }
+          },
+          "disclaimer": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "pregnancyId",
+          "birthDate",
+          "today",
+          "daysSinceBirth",
+          "week",
+          "guide",
+          "recoveryTasks",
+          "disclaimer"
+        ]
+      },
       "ExportBundleDto": {
         "type": "object",
         "properties": {
           "format": {
             "type": "string",
-            "example": "preconception-export@1"
+            "example": "preconception-export@2"
+          },
+          "formatVersion": {
+            "type": "number",
+            "example": 2,
+            "description": "Bundle format version; bumped when the shape changes"
           },
           "exportedAt": {
             "type": "string",
@@ -14517,6 +17463,30 @@
               "type": "object"
             }
           },
+          "symptomChecks": {
+            "type": "array",
+            "items": {
+              "type": "object"
+            }
+          },
+          "kickSessions": {
+            "type": "array",
+            "items": {
+              "type": "object"
+            }
+          },
+          "contractions": {
+            "type": "array",
+            "items": {
+              "type": "object"
+            }
+          },
+          "weightEntries": {
+            "type": "array",
+            "items": {
+              "type": "object"
+            }
+          },
           "subscriptions": {
             "type": "array",
             "items": {
@@ -14526,6 +17496,7 @@
         },
         "required": [
           "format",
+          "formatVersion",
           "exportedAt",
           "account",
           "profile",
@@ -14535,6 +17506,10 @@
           "dailyLogs",
           "readinessProgress",
           "reminders",
+          "symptomChecks",
+          "kickSessions",
+          "contractions",
+          "weightEntries",
           "subscriptions"
         ]
       },
@@ -14623,7 +17598,9 @@
               "week_guide",
               "recipe",
               "activity",
-              "meal_plan"
+              "meal_plan",
+              "visit_schedule",
+              "postpartum_guide"
             ]
           },
           "category": {
@@ -14642,7 +17619,8 @@
               "breastfeeding",
               "newborn_care",
               "postpartum",
-              "warning_signs"
+              "warning_signs",
+              "prenatal_care"
             ],
             "nullable": true
           },
@@ -14823,7 +17801,8 @@
               "breastfeeding",
               "newborn_care",
               "postpartum",
-              "warning_signs"
+              "warning_signs",
+              "prenatal_care"
             ],
             "nullable": true
           },
@@ -14896,7 +17875,8 @@
               "breastfeeding",
               "newborn_care",
               "postpartum",
-              "warning_signs"
+              "warning_signs",
+              "prenatal_care"
             ],
             "nullable": true
           },
@@ -15002,7 +17982,8 @@
               "breastfeeding",
               "newborn_care",
               "postpartum",
-              "warning_signs"
+              "warning_signs",
+              "prenatal_care"
             ]
           },
           "trimester": {
@@ -15078,7 +18059,9 @@
               "week_guide",
               "recipe",
               "activity",
-              "meal_plan"
+              "meal_plan",
+              "visit_schedule",
+              "postpartum_guide"
             ]
           },
           "category": {
@@ -15097,7 +18080,8 @@
               "breastfeeding",
               "newborn_care",
               "postpartum",
-              "warning_signs"
+              "warning_signs",
+              "prenatal_care"
             ],
             "nullable": true
           },

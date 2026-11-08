@@ -1,10 +1,15 @@
 import { ConflictException, Injectable } from '@nestjs/common';
+import { EXPORT_FORMAT_VERSION } from '@preconception/contracts';
 import { AuditService } from '../audit/audit.service.js';
 import { type Owner, ownerWhere } from '../auth/owner.js';
 import { toIsoDate } from '../common/dates.js';
 import { PrismaService } from '../database/prisma.service.js';
 
-export const EXPORT_FORMAT = 'preconception-export@1';
+/**
+ * Bundle format. v2 (2026-11-07) adds formatVersion, symptom checks, kick-count sessions,
+ * contractions, weight entries, quiet hours, the weight opt-in and kick thresholds.
+ */
+export const EXPORT_FORMAT = `preconception-export@${EXPORT_FORMAT_VERSION}`;
 
 /**
  * Exports are assembled synchronously: one person's records are small and bounded. Move this
@@ -71,6 +76,10 @@ export class PrivacyService {
       saved,
       shopping,
       planCompletions,
+      symptomChecks,
+      kickSessions,
+      contractions,
+      weightEntries,
     ] = await Promise.all([
       this.prisma.profile.findFirst({ where }),
       this.prisma.pregnancy.findMany({
@@ -114,6 +123,19 @@ export class PrivacyService {
         where,
         orderBy: { date: 'asc' },
       }),
+      this.prisma.symptomCheck.findMany({
+        where,
+        orderBy: { createdAt: 'asc' },
+      }),
+      this.prisma.kickSession.findMany({
+        where,
+        orderBy: { startedAt: 'asc' },
+      }),
+      this.prisma.contraction.findMany({
+        where,
+        orderBy: { startedAt: 'asc' },
+      }),
+      this.prisma.weightEntry.findMany({ where, orderBy: { date: 'asc' } }),
     ]);
     const birthPreferences = await this.prisma.birthPreferences.findMany({
       where: { pregnancyId: { in: pregnancies.map((p) => p.id) } },
@@ -121,6 +143,7 @@ export class PrivacyService {
 
     const bundle = {
       format: EXPORT_FORMAT,
+      formatVersion: EXPORT_FORMAT_VERSION,
       exportedAt: new Date().toISOString(),
       account:
         owner.kind === 'user'
@@ -145,6 +168,9 @@ export class PrivacyService {
         contentTopics: profile.contentTopics,
         reducedMotion: profile.reducedMotion,
         largerText: profile.largerText,
+        quietHoursStart: profile.quietHoursStart,
+        quietHoursEnd: profile.quietHoursEnd,
+        weightTrackingEnabled: profile.weightTrackingEnabled,
       },
       pregnancies: pregnancies.map((p) => ({
         status: p.status,
@@ -156,6 +182,14 @@ export class PrivacyService {
         restrictExercise: p.restrictExercise,
         foodRestrictions: p.foodRestrictions,
         clinicianNutritionPlan: p.clinicianNutritionPlan,
+        kickThreshold:
+          p.kickThresholdCount !== null && p.kickThresholdMinutes !== null
+            ? {
+                count: p.kickThresholdCount,
+                windowMinutes: p.kickThresholdMinutes,
+                source: 'clinician',
+              }
+            : null,
         outcome: p.outcome,
         endedOn: p.endedOn ? toIsoDate(p.endedOn) : null,
         datingHistory: p.datings.map((d) => ({
@@ -249,6 +283,29 @@ export class PrivacyService {
         date: toIsoDate(c.date),
         task: c.taskKey,
         completedAt: c.completedAt.toISOString(),
+      })),
+      symptomChecks: symptomChecks.map((c) => ({
+        date: toIsoDate(c.date),
+        symptoms: c.symptoms,
+        level: c.level,
+        matchedRules: c.matchedRules,
+        stage: c.stage,
+        rulesVersion: c.rulesVersion,
+        checkedAt: c.createdAt.toISOString(),
+      })),
+      kickSessions: kickSessions.map((k) => ({
+        date: toIsoDate(k.date),
+        startedAt: k.startedAt.toISOString(),
+        endedAt: k.endedAt?.toISOString() ?? null,
+        count: k.count,
+      })),
+      contractions: contractions.map((c) => ({
+        startedAt: c.startedAt.toISOString(),
+        endedAt: c.endedAt?.toISOString() ?? null,
+      })),
+      weightEntries: weightEntries.map((w) => ({
+        date: toIsoDate(w.date),
+        weightKg: Number(w.weightKg),
       })),
       subscriptions: subscriptions.map((s) => ({
         provider: s.provider,

@@ -32,6 +32,26 @@ export class ReminderScheduleService {
     );
   }
 
+  /** Time zone and quiet hours for a user's reminder emails. */
+  async deliveryPrefsFor(
+    userId: string,
+    db: Db = this.prisma,
+  ): Promise<{
+    timeZone: string;
+    quietStart: string | null;
+    quietEnd: string | null;
+  }> {
+    const profile = await db.profile.findUnique({
+      where: { userId },
+      select: { timeZone: true, quietHoursStart: true, quietHoursEnd: true },
+    });
+    return {
+      timeZone: profile?.timeZone ?? 'UTC',
+      quietStart: profile?.quietHoursStart ?? null,
+      quietEnd: profile?.quietHoursEnd ?? null,
+    };
+  }
+
   async timeZoneFor(userId: string, db: Db = this.prisma): Promise<string> {
     const profile = await db.profile.findUnique({
       where: { userId },

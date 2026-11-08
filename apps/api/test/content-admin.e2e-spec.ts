@@ -66,7 +66,9 @@ describe('Content workflow and admin (e2e)', () => {
   }
 
   beforeAll(async () => {
-    app = await createTestApp();
+    // Premium gating is off by default (journey-tracking covers that); this suite tests the
+    // locks themselves.
+    app = await createTestApp({ FEATURE_PREMIUM_LOCKS: 'true' });
     prisma = await getPrisma(app);
     http = request(app.getHttpServer());
     editor = await staffUser(app, prisma, 'content_editor');

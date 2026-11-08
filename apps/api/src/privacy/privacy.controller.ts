@@ -42,6 +42,11 @@ class DeleteAccountDto {
 
 class ExportBundleDto {
   @ApiProperty({ example: EXPORT_FORMAT }) format: string;
+  @ApiProperty({
+    example: 2,
+    description: 'Bundle format version; bumped when the shape changes',
+  })
+  formatVersion: number;
   @ApiProperty({ format: 'date-time' }) exportedAt: string;
   @ApiProperty({ type: 'object', additionalProperties: true }) account: object;
   @ApiProperty({ type: 'object', nullable: true, additionalProperties: true })
@@ -57,6 +62,14 @@ class ExportBundleDto {
   readinessProgress: object[];
   @ApiProperty({ type: 'array', items: { type: 'object' } })
   reminders: object[];
+  @ApiProperty({ type: 'array', items: { type: 'object' } })
+  symptomChecks: object[];
+  @ApiProperty({ type: 'array', items: { type: 'object' } })
+  kickSessions: object[];
+  @ApiProperty({ type: 'array', items: { type: 'object' } })
+  contractions: object[];
+  @ApiProperty({ type: 'array', items: { type: 'object' } })
+  weightEntries: object[];
   @ApiProperty({ type: 'array', items: { type: 'object' } })
   subscriptions: object[];
 }
