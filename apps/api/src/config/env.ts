@@ -162,6 +162,9 @@ function checkCombinations(
     issue('EMAIL_PROVIDER', 'memory is for tests only');
   }
   if (env.NODE_ENV !== 'production') return;
+  if (weakSecret(env.BETTER_AUTH_SECRET)) {
+    issue('BETTER_AUTH_SECRET', 'too weak or a placeholder');
+  }
   if (!env.RATE_LIMIT_ENABLED)
     issue('RATE_LIMIT_ENABLED', 'must be true in production');
   if (!env.ADMIN_REQUIRE_MFA)
@@ -178,6 +181,19 @@ function checkCombinations(
   if (env.CORS_ORIGINS.some((o) => !o.startsWith('https://'))) {
     issue('CORS_ORIGINS', 'must use https');
   }
+}
+
+/**
+ * Production secrets must look random: at least 32 characters (checked by the schema), at
+ * least 16 distinct characters, and not a template placeholder.
+ */
+export function weakSecret(secret: string): boolean {
+  return (
+    new Set(secret).size < 16 ||
+    /change[_-]?me|replace|placeholder|example|not[_-]?a[_-]?secret|ci[_-]?only|password/i.test(
+      secret,
+    )
+  );
 }
 
 const CheckedEnvSchema = EnvSchema.superRefine(checkCombinations);

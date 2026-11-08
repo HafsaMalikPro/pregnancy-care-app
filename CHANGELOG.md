@@ -4,6 +4,28 @@
 
 Threat model: `docs/THREAT_MODEL.md`. Controls and tests: `docs/SECURITY_CHECKLIST.md`.
 
+### Hardening phase 4 — Transport, headers and CORS
+
+- Helmet 8.3.0 on every response:
+  - HSTS `max-age=31536000; includeSubDomains`, `nosniff`, `X-Frame-Options: DENY`,
+    `Referrer-Policy: no-referrer`, CORP `same-site`, COOP `same-origin`, and a minimal
+    Permissions-Policy;
+  - API CSP `default-src 'none'; frame-ancestors 'none'; base-uri 'none'; form-action 'none'`.
+    Only the development Swagger UI gets a looser CSP, and it still can't be framed.
+- ETags are off. Writes, credentialed requests and `/v1/auth`, `/v1/me` and `/v1/admin` are
+  `Cache-Control: no-store`. Uncredentialed public content gets `Vary: Origin, Authorization,
+  Cookie`.
+- Production refuses a `BETTER_AUTH_SECRET` with fewer than 16 distinct characters or a
+  placeholder-looking value (CI's shared test value is one). Test fixtures now use random
+  secrets.
+- New `test/security/headers.e2e-spec.ts`:
+  - every header on Nest, Better Auth and 404 responses;
+  - no-store and no ETag on private responses;
+  - CORS refuses unknown, `null`, unlisted-subdomain, lookalike-suffix and http origins;
+  - no wildcard origin.
+- Production mode now also checks HSTS, the CSP and the disabled schema route. Unit + e2e
+  865/865, statements 97.25%.
+
 ### Hardening phase 3 — Input validation and output safety
 
 - **Request bodies must be JSON.** Any other body type now gets 415 `UNSUPPORTED_MEDIA_TYPE`

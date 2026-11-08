@@ -1,3 +1,4 @@
+import { randomBytes } from 'node:crypto';
 import type { INestApplication } from '@nestjs/common';
 import request from 'supertest';
 import type { App } from 'supertest/types.js';
@@ -10,6 +11,8 @@ describe('Production mode (e2e)', () => {
     // Production refuses unsafe settings at boot (see config/env.ts), so use real-looking ones.
     app = await createTestApp({
       NODE_ENV: 'production',
+      // Production refuses weak or placeholder secrets (CI's shared value is one).
+      BETTER_AUTH_SECRET: randomBytes(32).toString('base64'),
       RATE_LIMIT_ENABLED: 'true',
       ADMIN_REQUIRE_MFA: 'true',
       BETTER_AUTH_URL: 'https://api.example.test',
@@ -44,6 +47,22 @@ describe('Production mode (e2e)', () => {
         .expect(404);
     },
   );
+
+  it('sends HSTS and the strict API CSP in production', async () => {
+    const res = await request(app.getHttpServer()).get('/v1/health/live');
+    expect(res.headers['strict-transport-security']).toBe(
+      'max-age=31536000; includeSubDomains',
+    );
+    expect(res.headers['content-security-policy']).toContain(
+      "default-src 'none'",
+    );
+  });
+
+  it('does not serve the Better Auth schema endpoint', async () => {
+    await request(app.getHttpServer())
+      .get('/v1/auth/open-api/generate-schema')
+      .expect(404);
+  });
 
   it('still serves health probes', async () => {
     await request(app.getHttpServer()).get('/v1/health/live').expect(200);

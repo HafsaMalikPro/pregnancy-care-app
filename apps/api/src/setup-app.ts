@@ -8,6 +8,7 @@ import { AUTH_BASE_PATH, BLOCKED_AUTH_PREFIXES } from './auth/better-auth.js';
 import { clientIpMiddleware } from './auth/client-ip.js';
 import { jsonOnlyMiddleware } from './common/middleware/content-type.middleware.js';
 import { csrfMiddleware } from './common/middleware/csrf.middleware.js';
+import { applySecurityHeaders } from './common/middleware/security-headers.js';
 import { requestIdMiddleware } from './common/middleware/request-id.middleware.js';
 import { createValidationPipe } from './common/validation.js';
 import type { Env } from './config/env.js';
@@ -18,7 +19,7 @@ export async function setupApp(app: INestApplication): Promise<void> {
   const config = app.get<ConfigService<Env, true>>(ConfigService);
 
   const express = app.getHttpAdapter().getInstance() as Express;
-  express.disable('x-powered-by');
+  applySecurityHeaders(express);
   // Which proxy hops may set X-Forwarded-For (never "any"). req.ip, the Nest throttler and
   // Better Auth's limits all use the address this resolves.
   express.set('trust proxy', config.get('TRUST_PROXY', { infer: true }));

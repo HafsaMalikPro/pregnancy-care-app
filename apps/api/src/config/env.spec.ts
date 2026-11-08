@@ -1,3 +1,4 @@
+import { randomBytes } from 'node:crypto';
 import {
   isExactOrigin,
   isProxyAddress,
@@ -85,6 +86,8 @@ describe('validateEnv', () => {
   describe('production', () => {
     const prod = {
       ...base,
+      // Production also checks secret quality (see "production secret quality").
+      BETTER_AUTH_SECRET: randomBytes(32).toString('base64'),
       NODE_ENV: 'production',
       BETTER_AUTH_URL: 'https://api.example.com',
       APP_URL: 'https://app.example.com',
@@ -219,6 +222,42 @@ describe('validateEnv', () => {
       expect(isProxyAddress('192.168.1.10')).toBe(true);
       expect(isProxyAddress('::1/128')).toBe(true);
       expect(isProxyAddress('256.1.1.1')).toBe(false);
+    });
+  });
+
+  describe('production secret quality', () => {
+    const prod = {
+      ...base,
+      NODE_ENV: 'production',
+      BETTER_AUTH_URL: 'https://api.example.com',
+      APP_URL: 'https://app.example.com',
+      CORS_ORIGINS: 'https://app.example.com',
+    };
+    it('accepts a random secret', () => {
+      expect(() =>
+        validateEnv({
+          ...prod,
+          BETTER_AUTH_SECRET: 'q8V3nL0pZr7Tw2Yc5Kd9Hs1Mf6Xb4Ju0Ae3Gi8Oy',
+        }),
+      ).not.toThrow();
+    });
+    it.each([
+      ['repeated characters', 'x'.repeat(40)],
+      ['a placeholder', 'replace-with-at-least-32-random-characters'],
+      ['the CI value', 'ci-only-not-a-secret-0123456789abcdef'],
+      ['CHANGE_ME', 'CHANGE_ME_0123456789abcdefghijklmnopqrstuv'],
+    ])('refuses %s', (_, secret) => {
+      expect(() =>
+        validateEnv({ ...prod, BETTER_AUTH_SECRET: secret }),
+      ).toThrow('Invalid environment configuration: BETTER_AUTH_SECRET');
+      // Only production refuses it.
+      expect(() =>
+        validateEnv({
+          ...prod,
+          NODE_ENV: 'development',
+          BETTER_AUTH_SECRET: secret,
+        }),
+      ).not.toThrow();
     });
   });
 });
