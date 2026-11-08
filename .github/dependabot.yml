@@ -1,0 +1,28 @@
+# Weekly dependency updates. Security updates are raised as soon as an advisory is published
+# (enable "Dependabot security updates" in the repository settings).
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 10
+    groups:
+      nestjs:
+        patterns: ['@nestjs/*']
+      prisma:
+        patterns: ['prisma', '@prisma/*']
+      test-tooling:
+        patterns: ['vitest', '@vitest/*', 'supertest', '@types/*', 'oxlint*', 'prettier']
+    labels: [dependencies]
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    labels: [dependencies, ci]
+  - package-ecosystem: docker
+    directory: /apps/api
+    schedule:
+      interval: weekly
+    labels: [dependencies, docker]

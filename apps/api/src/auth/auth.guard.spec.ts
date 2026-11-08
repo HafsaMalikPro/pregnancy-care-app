@@ -12,7 +12,7 @@ import type { AuthRequirement } from './auth.decorators.js';
 import { AuthGuard } from './auth.guard.js';
 import type { Auth } from './auth.provider.js';
 
-const SECRET = 'q4Zs2b1x0Jm9Rk3t7YwV8nC6dP5eH2aL4gU1iO0sT9f';
+const SECRET = 'q4Zs2b1x0Jm9Rk3t7YwV8nC6dP5eH2aL4gU1iO0sT9f'; // gitleaks:allow (synthetic test value)
 
 function setup(opts: {
   requirement?: AuthRequirement;

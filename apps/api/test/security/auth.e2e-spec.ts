@@ -77,7 +77,7 @@ describe('Security: authentication and sessions (e2e)', () => {
       const changed = await http
         .post('/v1/auth/change-password')
         .set(user)
-        .send({ currentPassword: PASSWORD, newPassword: 'q1w2e3r4t5y6' })
+        .send({ currentPassword: PASSWORD, newPassword: 'q1w2e3r4t5y6' }) // gitleaks:allow (synthetic test value)
         .expect(400);
       expect(changed.body.code).toBe('PASSWORD_COMPROMISED');
 
@@ -91,7 +91,7 @@ describe('Security: authentication and sessions (e2e)', () => {
       const token = await resetToken(user.email);
       const reset = await http
         .post('/v1/auth/reset-password')
-        .send({ token, newPassword: '1qaz2wsx3edc' })
+        .send({ token, newPassword: '1qaz2wsx3edc' }) // gitleaks:allow (synthetic test value)
         .expect(400);
       expect(reset.body.code).toBe('PASSWORD_COMPROMISED');
     });

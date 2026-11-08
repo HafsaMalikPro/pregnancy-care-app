@@ -7,7 +7,9 @@ import {
   verifyPassword,
 } from './password.js';
 
-describe('password hashing', () => {
+// Each hash is deliberately expensive (32 MiB scrypt); under the combined coverage run the
+// default 5 s can be too short.
+describe('password hashing', { timeout: 30_000 }, () => {
   it('uses OWASP-equivalent scrypt parameters', () => {
     // OWASP: N=2^15, r=8, p=3 is one of the equal-strength minimums.
     expect(SCRYPT).toMatchObject({ N: 32768, r: 8, p: 3 });

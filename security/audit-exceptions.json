@@ -1,0 +1,4 @@
+{
+  "$comment": "Reviewed exceptions for scripts/audit-gate.mjs. Each entry needs the advisory id, the package, why it does not affect us, who reviewed it and an expiry date (at most 90 days ahead). Expired entries fail the gate again.",
+  "exceptions": []
+}

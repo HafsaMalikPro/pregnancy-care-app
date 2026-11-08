@@ -4,6 +4,28 @@
 
 Threat model: `docs/THREAT_MODEL.md`. Controls and tests: `docs/SECURITY_CHECKLIST.md`.
 
+### Hardening phase 7 — Dependencies, supply chain and secrets
+
+- Removed `@nestjs/mau` (and the unused `deploy` script). Its `undici` and `tmp` were all 8
+  high advisories; the audit went from 24 advisories (8 high) to 1 moderate.
+- `scripts/audit-gate.mjs` runs in CI over production and development dependencies. It fails
+  on any high or critical advisory unless `security/audit-exceptions.json` lists it with a
+  reason, a reviewer and an expiry date at most 90 days ahead (currently none).
+- Dependabot for npm, GitHub Actions and the Docker base image.
+- gitleaks:
+  - `.gitleaks.toml`, and a pre-commit hook (`scripts/git-hooks/pre-commit`) that refuses `.env`
+    files and scans staged changes.
+  - The full history scan found no credentials. Six synthetic fixtures are recorded in
+    `.gitleaksignore`, and a literal fixture is now generated at runtime.
+- New `apps/api/Dockerfile` (multi-stage) and `.dockerignore`:
+  - base image pinned by digest; production dependencies only;
+  - numeric non-root user, read-only app files, health check;
+  - a separate `migrate` target.
+  - Verified: it boots in production mode with `--read-only --cap-drop ALL`, becomes healthy,
+    serves no `/docs`, and logs JSON with no secrets.
+  - hadolint passes, and a CI container job lints, builds and checks the image.
+- `.env.example` and the variables test were already in place (local setup work).
+
 ### Hardening phase 6 — Data protection and privacy
 
 - **Field encryption** (AES-256-GCM, key id in every value, column name as authenticated data)

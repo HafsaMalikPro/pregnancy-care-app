@@ -241,7 +241,7 @@ describe('validateEnv', () => {
       expect(() =>
         validateEnv({
           ...prod,
-          BETTER_AUTH_SECRET: 'q8V3nL0pZr7Tw2Yc5Kd9Hs1Mf6Xb4Ju0Ae3Gi8Oy',
+          BETTER_AUTH_SECRET: randomBytes(32).toString('base64'),
         }),
       ).not.toThrow();
     });

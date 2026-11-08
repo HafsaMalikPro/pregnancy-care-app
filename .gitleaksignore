@@ -1,0 +1,15 @@
+# Reviewed gitleaks findings in git history (2026-11-08). All are synthetic test fixtures or
+# template placeholders, not credentials; nothing needed rotating. One fingerprint per line.
+
+# fake password in a redaction test
+5d3bc31309c31bf4c75b4b8578d59324ba27790b:apps/api/src/common/logging/redact.spec.ts:generic-api-key:18
+# invented secret fixture (now generated at runtime)
+83f1f8e7af56d6a3b60c6fb0a0a842fb332f1816:apps/api/src/config/env.spec.ts:generic-api-key:240
+# publicly known breached password used to test refusal
+9b3d587d6408185647342c44cb4dd978812fa574:apps/api/test/security/auth.e2e-spec.ts:generic-api-key:80
+# publicly known breached password used to test refusal
+9b3d587d6408185647342c44cb4dd978812fa574:apps/api/test/security/auth.e2e-spec.ts:generic-api-key:94
+# NestJS template placeholder badge token (abc123def456)
+5e9c13f9daca4de45a7f08f418d72f5649de3d9c:apps/api/README.md:generic-api-key:5
+# synthetic guest-secret fixture for a unit test
+5e9c13f9daca4de45a7f08f418d72f5649de3d9c:apps/api/src/auth/auth.guard.spec.ts:generic-api-key:15

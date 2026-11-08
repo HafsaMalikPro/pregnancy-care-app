@@ -82,3 +82,33 @@ default; `src/privacy/retention.service.ts`).
   values; a 500 logs only the method, route, error class and request id.
 - Keep application logs for at most 30 days unless a legal requirement says otherwise, with
   access limited to the operations team.
+
+## Secrets and their rotation
+
+| Secret | Rotate | Effect of rotating |
+| --- | --- | --- |
+| `BETTER_AUTH_SECRET` | On suspicion of exposure, and when staff with access leave | Every session ends and stored two-factor secrets become unreadable: staff must re-enrol 2FA. Plan it, announce it, then rotate |
+| `FIELD_ENCRYPTION_KEYS` | Yearly, and on suspicion of exposure | None for users: add a key, make it active, run `fields:reencrypt`, then remove the old key (see above) |
+| `RESEND_API_KEY` | On suspicion of exposure | Create the new key in Resend, update the secret, deploy, revoke the old key |
+| Database password | Yearly, and when operators leave | Update the secret manager and the database role together; the pool reconnects on deploy |
+
+If a secret is ever committed: treat it as exposed. Rotate it first, then remove it from the
+tree. Rewriting git history does not un-expose a pushed secret.
+
+The full history of this repository was scanned with gitleaks v8.30.1 on 2026-11-08: no
+credentials. Six findings were synthetic test fixtures or a template placeholder; they are
+recorded with reasons in `.gitleaksignore`.
+
+## Container
+
+- Image: `apps/api/Dockerfile`.
+  - Node 22.17.1 on Alpine 3.22, pinned by digest (Dependabot proposes updates).
+  - Production dependencies only.
+  - Runs as uid/gid 1000; the app files are owned by root and read-only for that user.
+  - Has a health check on `/v1/health/live`.
+- Run it with a read-only root filesystem and no extra privileges:
+  `--read-only --tmpfs /tmp --cap-drop ALL --security-opt no-new-privileges`.
+- Migrations run from the separate `migrate` target before the new version starts. The API
+  image has no Prisma CLI.
+- CI lints the Dockerfile (hadolint), builds the image, and checks that it has no dev
+  tooling and runs as non-root.

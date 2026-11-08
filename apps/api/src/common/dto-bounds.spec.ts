@@ -36,7 +36,8 @@ function sources(dir: string): string[] {
   });
 }
 
-describe('DTO bounds', () => {
+// Imports every controller and DTO module; slow under the instrumented coverage run.
+describe('DTO bounds', { timeout: 30_000 }, () => {
   it('every string field has a length bound and every array a size bound', async () => {
     for (const file of sources(SRC)) await import(pathToFileURL(file).href);
     const props = new Map<string, Set<string>>();

@@ -66,6 +66,13 @@ git check-ignore -v apps/api/.env   # prints the matching .gitignore rule
 git status --short                   # .env must not appear
 ```
 
+Turn on the pre-commit hook once per clone. It refuses `.env` files and runs gitleaks
+(installed, or through Docker) on what you stage:
+
+```sh
+git config core.hooksPath scripts/git-hooks
+```
+
 ## 3. Start the database and run migrations
 
 From `backend/`:

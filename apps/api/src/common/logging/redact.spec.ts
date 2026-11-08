@@ -15,7 +15,7 @@ describe('log redaction', () => {
     ],
     [
       'password json',
-      '{"email":"a@b.co","password":"hunter2-long-pass"}',
+      '{"email":"a@b.co","password":"hunter2-long-pass"}', // gitleaks:allow (synthetic test value)
       '"password":[redacted]',
     ],
     ['newPassword kv', 'newPassword=correct-horse', 'newPassword=[redacted]'],

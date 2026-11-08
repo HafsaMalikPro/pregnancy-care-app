@@ -103,9 +103,28 @@ jobs:
       - uses: actions/setup-node@v7
         with:
           node-version-file: .nvmrc
-      - name: Dependency audit (high and critical)
-        run: pnpm audit --prod --audit-level high
-      - name: Secret scan
+      # Production and development dependencies. Fails on any high or critical advisory not
+      # listed (with a reason and an expiry) in security/audit-exceptions.json.
+      - name: Dependency gate (high and critical)
+        run: node scripts/audit-gate.mjs
+      # Uses .gitleaks.toml and the reviewed fingerprints in .gitleaksignore.
+      - name: Secret scan (full history)
         uses: gitleaks/gitleaks-action@v3
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  container:
+    name: Dockerfile lint and image build
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+      - name: Dockerfile lint (hadolint)
+        run: docker run --rm -i hadolint/hadolint:v2.15.1 hadolint --failure-threshold warning - < apps/api/Dockerfile
+      - name: Build the production image
+        run: docker build -f apps/api/Dockerfile -t pregnancy-care-api:ci .
+      - name: Runtime image has no dev tooling and runs as non-root
+        run: |
+          test "$(docker image inspect pregnancy-care-api:ci --format '{{.Config.User}}')" = "1000:1000"
+          docker run --rm --entrypoint sh pregnancy-care-api:ci -c \
+            'for m in vitest typescript @nestjs/cli prisma oxlint supertest; do [ ! -e node_modules/$m ] || { echo "dev dependency $m in image"; exit 1; }; done'
