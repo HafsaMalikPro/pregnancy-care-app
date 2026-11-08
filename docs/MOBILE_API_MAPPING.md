@@ -70,7 +70,7 @@ Facts that shape the app:
 - `POST /v1/anonymous-sessions/link` (`{ secret }`, user credentials) migrates guest data into an
   account and returns per-table counts. It returns **409 if the account already holds health data**,
   which the app must explain rather than retry.
-- Password is minimum **12 characters** (`PASSWORD_MIN_LENGTH`). Maximum 128.
+- Password is minimum **8 characters** (`PASSWORD_MIN_LENGTH`). Maximum 128.
 - **Password reset and email verification are disabled (404)** — no email provider is configured. The
   app must not show a "Forgot password?" flow.
 - Better Auth replies use **Better Auth's own error shape**, not the platform `ApiError` envelope. The

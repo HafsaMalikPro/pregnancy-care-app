@@ -1,7 +1,8 @@
 // GENERATED FILE: do not edit by hand.
 //
-// Breached passwords that would otherwise pass the 12-128 character policy, lower-cased and
-// NFKC-normalised. Source: the UK NCSC "100k most used passwords" list (derived from
+// Breached passwords of 12-128 characters, lower-cased and NFKC-normalised. The minimum is now
+// 8 characters; by the owner's decision (2026-11-08) this list still covers 12+ only, so
+// breached passwords of 8-11 characters (e.g. pass@123) are not refused. Source: the UK NCSC "100k most used passwords" list (derived from
 // Have I Been Pwned breach data), published in SecLists under the MIT licence:
 // https://github.com/danielmiessler/SecLists/blob/master/Passwords/Common-Credentials/100k-most-used-passwords-NCSC.txt
 // Regenerate: keep entries of 12-128 printable characters, lower-case, de-duplicate.

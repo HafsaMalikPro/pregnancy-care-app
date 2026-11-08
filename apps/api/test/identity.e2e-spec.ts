@@ -128,10 +128,10 @@ describe('Identity and access (e2e)', () => {
         .expect(401);
     });
 
-    it('rejects a password shorter than 12 characters', async () => {
+    it('rejects a password shorter than 8 characters', async () => {
       await http
         .post('/v1/auth/sign-up/email')
-        .send({ email: uniqueEmail(), password: 'short-pw', name: 'x' })
+        .send({ email: uniqueEmail(), password: 'short-p', name: 'x' })
         .expect(400);
     });
 

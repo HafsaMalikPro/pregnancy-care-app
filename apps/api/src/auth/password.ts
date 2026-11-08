@@ -25,7 +25,8 @@ export const SCRYPT = {
 } as const;
 const LEGACY = { N: 16384, r: 16, p: 1, keyLength: 64 } as const;
 
-export const PASSWORD_MIN_LENGTH = 12;
+/** Owner decision (2026-11-08): 8 characters minimum (was 12). */
+export const PASSWORD_MIN_LENGTH = 8;
 export const PASSWORD_MAX_LENGTH = 128;
 
 function derive(

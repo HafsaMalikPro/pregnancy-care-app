@@ -1,5 +1,13 @@
 # Changelog
 
+## 2026-11-08 — Password minimum lowered to 8 characters (owner decision)
+
+- `PASSWORD_MIN_LENGTH` is now 8 (was 12), in the API and the website.
+- By the owner's choice, the bundled breached-password list still covers 12+ characters only.
+  Breached passwords of 8–11 characters (for example `pass@123`, entry #21,622 in the NCSC
+  list) are accepted. This is recorded as a finding in `docs/SECURITY_PENETRATION_TEST_REPORT.md`.
+- The boundary tests moved to 7 (refused) and 8 (accepted).
+
 ## 2026-11-08 — Production security hardening
 
 Threat model: `docs/THREAT_MODEL.md`. Controls and tests: `docs/SECURITY_CHECKLIST.md`.

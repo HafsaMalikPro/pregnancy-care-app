@@ -62,9 +62,9 @@ describe('Security: authentication and sessions (e2e)', () => {
       .send({ email, password });
 
   describe('password policy', () => {
-    it('accepts 12 and 128 characters and rejects 11 and 129', async () => {
-      await signUpWith('a'.repeat(5) + 'b'.repeat(6)).expect(400); // 11
-      await signUpWith('unusual-pass').expect(200); // 12
+    it('accepts 8 and 128 characters and rejects 7 and 129', async () => {
+      await signUpWith('a'.repeat(3) + 'b'.repeat(4)).expect(400); // 7
+      await signUpWith('unusua-9').expect(200); // 8
       await signUpWith('x9'.repeat(64)).expect(200); // 128
       await signUpWith('x9'.repeat(64) + 'z').expect(400); // 129
     });
