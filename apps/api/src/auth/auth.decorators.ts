@@ -19,17 +19,28 @@ export const AUTH_REQUIREMENT = 'auth:requirement';
  * - `public`: no credentials.
  */
 export type AuthRequirement =
-  | { kind: 'public' }
-  | { kind: 'optional' }
+  | { kind: 'public'; reason: string }
+  | { kind: 'optional'; reason: string }
   | { kind: 'owner' }
   | { kind: 'user' }
   | { kind: 'staff'; roles: StaffRole[] };
 
-export const Public = () =>
-  SetMetadata(AUTH_REQUIREMENT, { kind: 'public' } satisfies AuthRequirement);
+/**
+ * Opts a route (or controller) out of authentication. The reason is required and reviewed:
+ * test/security/authz.e2e-spec.ts lists every public route and fails on any it doesn't know.
+ */
+export const Public = (reason: string) =>
+  SetMetadata(AUTH_REQUIREMENT, {
+    kind: 'public',
+    reason,
+  } satisfies AuthRequirement);
 
-export const OptionalAuth = () =>
-  SetMetadata(AUTH_REQUIREMENT, { kind: 'optional' } satisfies AuthRequirement);
+/** Public, but identifies the caller when credentials are sent. Same review rule as Public. */
+export const OptionalAuth = (reason: string) =>
+  SetMetadata(AUTH_REQUIREMENT, {
+    kind: 'optional',
+    reason,
+  } satisfies AuthRequirement);
 
 /** The owner when credentials were sent, otherwise undefined. For @OptionalAuth() routes. */
 export const MaybeOwner = createParamDecorator(

@@ -167,7 +167,8 @@ export class WeightController {
     const where = { ...ownerWhere(owner), date: fromIsoDate(p.date) };
     const existing = await this.prisma.weightEntry.findFirst({ where });
     const row = existing
-      ? await this.prisma.weightEntry.update({
+      ? // owner-scope: `existing` was found with ownerWhere above
+        await this.prisma.weightEntry.update({
           where: { id: existing.id },
           data: { weightKg: dto.weightKg },
         })

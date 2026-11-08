@@ -245,7 +245,7 @@ export class PregnancyController {
 }
 
 @ApiTags('pregnancy')
-@Public()
+@Public('Published week guides are public content')
 @Controller('week-guides')
 export class WeekGuidesController {
   constructor(private readonly guides: WeekGuideService) {}

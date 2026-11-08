@@ -271,6 +271,7 @@ export class NutritionController {
       },
     });
     if (count === 0) throw new NotFoundException('Item not found.');
+    // owner-scope: the updateMany above matched this id for this owner (else 404)
     return toShopping(
       await this.prisma.shoppingItem.findUniqueOrThrow({ where: { id } }),
     );

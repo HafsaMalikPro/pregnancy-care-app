@@ -1,3 +1,5 @@
+// owner-scope-file: system job. It selects due reminders across all owners by time, and
+// sends each one only to its own owner's verified address.
 import {
   Inject,
   Injectable,

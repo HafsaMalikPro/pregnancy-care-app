@@ -250,6 +250,7 @@ export class RemindersController {
           : null;
       // Anything queued for the old settings must not go out.
       await this.schedule.cancelQueued([id], 'REMINDER_CHANGED', tx);
+      // owner-scope: `existing` was found with ownerWhere above (else 404)
       return tx.reminder.update({
         where: { id },
         data: {

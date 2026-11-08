@@ -76,6 +76,7 @@ export class ReminderScheduleService {
       where: { userId, channel: 'email' },
     });
     for (const r of reminders) {
+      // owner-scope: `reminders` were found by this user's id above
       await db.reminder.update({
         where: { id: r.id },
         data: { nextRunAt: this.nextRunAt(r, timeZone) },

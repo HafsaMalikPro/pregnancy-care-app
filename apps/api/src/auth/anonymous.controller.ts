@@ -83,7 +83,7 @@ export class AnonymousSessionController {
   constructor(private readonly sessions: AnonymousSessionService) {}
 
   @Post()
-  @Public()
+  @Public('Starting a guest session is how a visitor gets credentials')
   @Throttle({ default: { limit: 10, ttl: 3_600_000 } })
   @ApiOperation({
     summary: 'Start anonymous use',

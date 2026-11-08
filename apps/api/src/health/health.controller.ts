@@ -22,7 +22,7 @@ import { LivenessDto, ReadinessDto } from './health.dto.js';
   description:
     'Optional upstream correlation id; echoed back when well-formed.',
 })
-@Public()
+@Public('Liveness and readiness probes for the load balancer; status only')
 @SkipThrottle()
 @Controller('health')
 export class HealthController {

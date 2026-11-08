@@ -135,6 +135,7 @@ export class AppointmentsController {
   ): Promise<Appointment> {
     await this.consent.assertHealthDataConsent(owner);
     await this.find(owner, id);
+    // owner-scope: this.find(owner, id) above 404s unless the owner has this id
     const row = await this.prisma.appointment.update({
       where: { id },
       data: {

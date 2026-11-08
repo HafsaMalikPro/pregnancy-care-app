@@ -35,7 +35,7 @@ const SLUG = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 @ApiCookieAuth(SECURITY.cookie)
 @ApiSecurity(SECURITY.anonymous)
 @ApiSecurity({})
-@OptionalAuth()
+@OptionalAuth('Published articles are public; a session only adds entitlement')
 @Controller('articles')
 export class ArticlesController {
   constructor(

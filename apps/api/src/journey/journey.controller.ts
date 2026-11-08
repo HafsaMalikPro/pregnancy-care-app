@@ -154,7 +154,7 @@ export class JourneyController {
   ) {}
 
   @Get('visit-schedules')
-  @Public()
+  @Public('Published prenatal visit schedules are public content')
   @ApiOperation({
     summary: 'Published prenatal visit schedules',
     description:
@@ -222,7 +222,7 @@ export class JourneyController {
   }
 
   @Get('postpartum-guides/:week')
-  @Public()
+  @Public('Published postpartum guides are public content')
   @ApiOperation({
     summary: 'Published postpartum guide for a week after birth (1-6)',
   })

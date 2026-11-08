@@ -190,7 +190,8 @@ export class ReadinessController {
       where: { ...ownerWhere(owner), taskId },
     });
     const row = existing
-      ? await this.prisma.userTaskProgress.update({
+      ? // owner-scope: `existing` was found with ownerWhere above
+        await this.prisma.userTaskProgress.update({
           where: { id: existing.id },
           // Keep the original completion time when re-saving a completed task.
           data: {

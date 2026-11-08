@@ -168,7 +168,7 @@ export class SymptomChecksController {
   ) {}
 
   @Get('options')
-  @Public()
+  @Public('The warning-sign vocabulary must be readable without an account')
   @ApiOperation({
     summary: 'Warning signs and wording for the red-flag screen',
     description:
@@ -196,7 +196,9 @@ export class SymptomChecksController {
   }
 
   @Post()
-  @OptionalAuth()
+  @OptionalAuth(
+    'An emergency triage result must never depend on having an account or consent',
+  )
   @ApiBearerAuth(SECURITY.bearer)
   @ApiCookieAuth(SECURITY.cookie)
   @ApiSecurity(SECURITY.anonymous)

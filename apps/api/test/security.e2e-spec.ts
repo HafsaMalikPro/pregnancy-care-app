@@ -25,7 +25,7 @@ import {
 } from './helpers.js';
 
 /** Throws an error carrying sensitive-looking text, to check that 500s never echo it. */
-@Public()
+@Public('test-only probe controller')
 @Controller('leak-probe')
 class LeakProbeController {
   @Get()

@@ -140,6 +140,7 @@ export class PregnancyService {
   ): Promise<Pregnancy> {
     await this.consent.assertHealthDataConsent(owner);
     const active = await this.requireActive(owner);
+    // owner-scope: `active` is the owner's active pregnancy (ownerWhere)
     const row = await this.prisma.pregnancy.update({
       where: { id: active.id },
       data: cleanDetails(details),
@@ -168,6 +169,7 @@ export class PregnancyService {
           dueDate: fromIsoDate(dueDate),
         },
       });
+      // owner-scope: `active` is the owner's active pregnancy (ownerWhere)
       return tx.pregnancy.update({
         where: { id: active.id },
         data: {
@@ -225,6 +227,7 @@ export class PregnancyService {
       ]);
     }
     const row = await this.prisma.$transaction(async (tx) => {
+      // owner-scope: `active` is the owner's active pregnancy (ownerWhere)
       const ended = await tx.pregnancy.update({
         where: { id: active.id },
         data: { status: 'ended', outcome, endedOn: fromIsoDate(endedOn) },
@@ -242,6 +245,7 @@ export class PregnancyService {
       });
       if (paused.length) {
         const ids = paused.map((r) => r.id);
+        // owner-scope: ids come from the ownerWhere findMany just above
         await tx.reminder.updateMany({
           where: { id: { in: ids } },
           data: { enabled: false, nextRunAt: null },

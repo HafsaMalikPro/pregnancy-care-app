@@ -8,7 +8,7 @@ import { anonymous, createTestApp, signUp } from './helpers.js';
  * A public test-only controller isolates the global ThrottlerGuard (and the error filter's 429
  * mapping) from authentication. Rate limiting is on for this file only.
  */
-@Public()
+@Public('test-only probe controller')
 @Controller('throttle-probe')
 class ThrottleProbeController {
   @Get()

@@ -78,6 +78,7 @@ export class CyclesService {
         ? input.periodEnd
         : existing.periodEnd && toIsoDate(existing.periodEnd);
     await this.assertValid(owner, periodStart, periodEnd);
+    // owner-scope: `existing` was found with ownerWhere above
     const row = await this.prisma.cycle.update({
       where: { id: existing.id },
       data: {

@@ -53,7 +53,7 @@ function paged<T>(items: T[], q: { limit: number; offset: number }) {
 }
 
 @ApiTags('nutrition')
-@Public()
+@Public('Published, clinically reviewed recipes are public content')
 @Controller('recipes')
 export class RecipesController {
   constructor(private readonly catalog: CatalogService) {}
@@ -107,7 +107,7 @@ export class RecipesController {
 }
 
 @ApiTags('exercise')
-@Public()
+@Public('Published, clinically reviewed activities are public content')
 @Controller('activities')
 export class ActivitiesController {
   constructor(private readonly catalog: CatalogService) {}
@@ -158,7 +158,7 @@ export class ActivitiesController {
 }
 
 @ApiTags('nutrition')
-@Public()
+@Public('Published, clinically reviewed meal plans are public content')
 @Controller('meal-plans')
 export class MealPlansController {
   constructor(private readonly catalog: CatalogService) {}

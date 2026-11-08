@@ -4,6 +4,21 @@
 
 Threat model: `docs/THREAT_MODEL.md`. Controls and tests: `docs/SECURITY_CHECKLIST.md`.
 
+### Hardening phase 2 — Authorization
+
+- `@Public(reason)` and `@OptionalAuth(reason)` now require a written reason. A new test lists
+  every registered route: the 17 reachable without credentials must match a reviewed
+  allow-list, and every other route must answer 401 without credentials.
+- Owner scoping is enforced at test time (`src/database/owner-scope.spec.ts`): every Prisma
+  call on an owner model (read from the schema) must show owner scoping or carry a reviewed
+  `// owner-scope:` reason. The 13 existing exceptions were checked and annotated.
+- `audit_events` is append-only in the database (migration
+  `20261108130000_audit_append_only`): UPDATE, DELETE and TRUNCATE are refused for every role.
+  The only allowed change is clearing actor/target ids inside a transaction that opts in
+  (account deletion).
+- New tests: tracker IDOR (another user and a guest), refused `pending_deletion`/`deleted`
+  accounts including staff. Unit + e2e 807/807.
+
 ### Hardening phase 1 — Authentication and sessions
 
 - **Fixed: rate limits could be bypassed by spoofing `X-Forwarded-For`.** Better Auth trusted

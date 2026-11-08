@@ -137,6 +137,7 @@ export class KickCountsController {
   ): Promise<KickThreshold> {
     await this.consent.assertHealthDataConsent(owner);
     const active = await this.requirePregnancy(owner);
+    // owner-scope: `active` is the owner's active pregnancy (ownerWhere)
     const row = await this.prisma.pregnancy.update({
       where: { id: active.row.id },
       data: {
@@ -155,6 +156,7 @@ export class KickCountsController {
   @ApiErrors(404)
   async clearThreshold(@CurrentOwner() owner: Owner): Promise<void> {
     const active = await this.requirePregnancy(owner);
+    // owner-scope: `active` is the owner's active pregnancy (ownerWhere)
     await this.prisma.pregnancy.update({
       where: { id: active.row.id },
       data: {

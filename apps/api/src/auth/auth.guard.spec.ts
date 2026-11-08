@@ -81,7 +81,7 @@ const liveAnon = (extra: Record<string, unknown> = {}) => ({
 
 describe('AuthGuard', () => {
   it('lets public routes through without looking up credentials', async () => {
-    const t = setup({ requirement: { kind: 'public' } });
+    const t = setup({ requirement: { kind: 'public', reason: 'test' } });
     await expect(t.run()).resolves.toBe(true);
     expect(t.getSession).not.toHaveBeenCalled();
   });
@@ -149,7 +149,7 @@ describe('AuthGuard', () => {
 
   describe('optional auth', () => {
     it('proceeds without an owner when no credentials are sent', async () => {
-      const t = setup({ requirement: { kind: 'optional' } });
+      const t = setup({ requirement: { kind: 'optional', reason: 'test' } });
       await expect(t.run()).resolves.toBe(true);
       expect(t.req.owner).toBeUndefined();
       expect(t.getSession).not.toHaveBeenCalled();
@@ -157,7 +157,7 @@ describe('AuthGuard', () => {
 
     it('still rejects invalid credentials', async () => {
       const t = setup({
-        requirement: { kind: 'optional' },
+        requirement: { kind: 'optional', reason: 'test' },
         headers: { authorization: 'Bearer bad' },
       });
       await expect(t.run()).rejects.toBeInstanceOf(UnauthorizedException);
@@ -165,7 +165,7 @@ describe('AuthGuard', () => {
 
     it('notices a session cookie', async () => {
       const t = setup({
-        requirement: { kind: 'optional' },
+        requirement: { kind: 'optional', reason: 'test' },
         headers: { cookie: 'theme=dark; better-auth.session_token=abc' },
         sessionUser: user(),
       });
