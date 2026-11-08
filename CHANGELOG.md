@@ -66,3 +66,13 @@
   reminder test now checks its own reminder instead of global tick counts (it was flaky with
   other files' reminders). New e2e test: quiet hours skip delivery and scheduling continues.
   Unit + e2e 746/746, statements 97.05%. OpenAPI 113 paths, regenerated with no diff.
+
+### Phase 1 follow-up — password reset and verification in OpenAPI
+
+- `docs/api/openapi.json` is now exported with an email provider enabled, so it lists
+  `request-password-reset`, `reset-password`, `verify-email` and `send-verification-email`
+  (113 → 117 paths). Each is marked public and "needs an email provider". The contract test
+  runs with `EMAIL_PROVIDER=memory`, and a production-mode test checks they answer 404 when
+  `EMAIL_PROVIDER=none`.
+- `scripts/export-openapi.mjs` imports the app after setting its env (static ESM imports
+  had loaded the config first).

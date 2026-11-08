@@ -3,11 +3,17 @@
 import 'dotenv/config';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { NestFactory } from '@nestjs/core';
-import { AppModule } from '../dist/app.module.js';
-import { buildOpenApiDocument } from '../dist/openapi.js';
-import { setupApp } from '../dist/setup-app.js';
 
 process.env.NODE_ENV ??= 'development';
+// Document the full API: password reset and email verification are served only with an email
+// provider. `log` sends nothing anywhere; it only enables those routes for the export.
+if (!process.env.EMAIL_PROVIDER || process.env.EMAIL_PROVIDER === 'none') {
+  process.env.EMAIL_PROVIDER = 'log';
+}
+// Imported after the env above is set: the app reads its config when first loaded.
+const { AppModule } = await import('../dist/app.module.js');
+const { buildOpenApiDocument } = await import('../dist/openapi.js');
+const { setupApp } = await import('../dist/setup-app.js');
 const out = new URL('../../../docs/api/openapi.json', import.meta.url);
 
 const app = await NestFactory.create(AppModule, { logger: false });

@@ -149,7 +149,11 @@ describe('HTTP contract (e2e)', () => {
   let http: ReturnType<typeof request>;
 
   beforeAll(async () => {
-    app = await createTestApp({ CORS_ORIGINS: ALLOWED_ORIGIN });
+    // The committed document is exported with an email provider (see export-openapi.mjs).
+    app = await createTestApp({
+      CORS_ORIGINS: ALLOWED_ORIGIN,
+      EMAIL_PROVIDER: 'memory',
+    });
     http = request(app.getHttpServer());
   });
 

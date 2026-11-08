@@ -5,7 +5,7 @@ import {
   SwaggerModule,
 } from '@nestjs/swagger';
 import { AUTH, type Auth } from './auth/auth.provider.js';
-import { AUTH_BASE_PATH } from './auth/better-auth.js';
+import { AUTH_BASE_PATH, EMAIL_AUTH_PATHS } from './auth/better-auth.js';
 import { ApiErrorDto } from './common/dto/api-error.dto.js';
 import { SECURITY } from './common/swagger.js';
 
@@ -34,7 +34,15 @@ const PUBLIC_AUTH_PATHS = new Set([
   // Called mid sign-in with Better Auth's short-lived two-factor cookie, not a session.
   '/two-factor/verify-totp',
   '/two-factor/verify-backup-code',
+  // Email links: the visitor has no session yet (or has lost access to it).
+  '/request-password-reset',
+  '/reset-password',
+  '/verify-email',
+  '/send-verification-email',
 ]);
+
+const EMAIL_ONLY_NOTE =
+  '**Needs an email provider.** Served only when `EMAIL_PROVIDER` is not `none`; otherwise 404. Responses never reveal whether an address has an account.';
 
 const DESCRIPTION = `
 API for web, admin and mobile clients. Every route is versioned under \`/v1\`.
@@ -71,6 +79,8 @@ own limits to sign-in and sign-up.
 /**
  * Single source for the served document and the exported docs/api/openapi.json: the Nest
  * routes plus the Better Auth routes that are enabled (DISABLED_AUTH_PATHS are left out).
+ * The committed file is exported with an email provider configured, so it also lists the
+ * EMAIL_AUTH_PATHS (marked as needing one); a deployment without email serves them as 404.
  */
 export async function buildOpenApiDocument(
   app: INestApplication,
@@ -152,8 +162,16 @@ function mergeAuthSchema(
     const merged: Record<string, unknown> = {};
     for (const [method, op] of Object.entries(ops)) {
       if (UNSERVED_AUTH_OPERATIONS.has(`${method} ${path}`)) continue;
+      const described = EMAIL_AUTH_PATHS.includes(path)
+        ? {
+            ...op,
+            description: [EMAIL_ONLY_NOTE, op.description]
+              .filter(Boolean)
+              .join('\n\n'),
+          }
+        : op;
       merged[method] = {
-        ...withExample(toOpenApi30(op), AUTH_REQUEST_EXAMPLES[path]),
+        ...withExample(toOpenApi30(described), AUTH_REQUEST_EXAMPLES[path]),
         tags: ['auth'],
         operationId: `auth_${typeof op.operationId === 'string' ? op.operationId : `${method}${path}`}`,
         security: PUBLIC_AUTH_PATHS.has(path) ? [] : sessionSecurity,

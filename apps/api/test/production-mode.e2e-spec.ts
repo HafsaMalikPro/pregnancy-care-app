@@ -30,6 +30,21 @@ describe('Production mode (e2e)', () => {
     },
   );
 
+  it.each([
+    '/v1/auth/request-password-reset',
+    '/v1/auth/reset-password',
+    '/v1/auth/send-verification-email',
+  ])(
+    'answers 404 for %s without an email provider (documented as conditional)',
+    async (path) => {
+      await request(app.getHttpServer())
+        .post(path)
+        .set('Origin', 'https://app.example.test')
+        .send({})
+        .expect(404);
+    },
+  );
+
   it('still serves health probes', async () => {
     await request(app.getHttpServer()).get('/v1/health/live').expect(200);
   });
