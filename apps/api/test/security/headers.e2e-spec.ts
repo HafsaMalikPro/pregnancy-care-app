@@ -8,7 +8,7 @@ import {
 import { createTestApp, signUp } from '../helpers.js';
 
 /**
- * Transport headers, caching and CORS (docs/SECURITY_CHECKLIST.md, section D).
+ * Transport headers and caching (docs/SECURITY_CHECKLIST.md, section D). CORS: cors.e2e-spec.ts.
  * Production-only behaviour (docs off, Secure cookies) is in test/production-mode.e2e-spec.ts.
  */
 const ALLOWED = 'https://app.example.test';
@@ -20,7 +20,7 @@ const directives = (csp: string) =>
     .filter(Boolean)
     .sort();
 
-describe('Security: headers, caching and CORS (e2e)', () => {
+describe('Security: headers and caching (e2e)', () => {
   let app: INestApplication<App>;
   let http: ReturnType<typeof request>;
 
@@ -107,43 +107,6 @@ describe('Security: headers, caching and CORS (e2e)', () => {
       expect(res.headers.vary).toMatch(/Authorization/);
       expect(res.headers.vary).toMatch(/Cookie/);
       expect(res.headers.etag).toBeUndefined();
-    });
-  });
-
-  describe('CORS', () => {
-    const preflight = (origin: string) =>
-      http
-        .options('/v1/me/profile')
-        .set('Origin', origin)
-        .set('Access-Control-Request-Method', 'PUT')
-        .set('Access-Control-Request-Headers', 'content-type');
-
-    it('allows the configured origin with credentials', async () => {
-      const res = await preflight(ALLOWED);
-      expect(res.headers['access-control-allow-origin']).toBe(ALLOWED);
-      expect(res.headers['access-control-allow-credentials']).toBe('true');
-    });
-
-    it.each([
-      ['an unknown origin', 'https://evil.example'],
-      ['the null origin', 'null'],
-      ['an unlisted subdomain', 'https://evil.app.example.test'],
-      ['a lookalike suffix', 'https://app.example.test.evil.example'],
-      ['the http variant', 'http://app.example.test'],
-    ])('refuses %s', async (_, origin) => {
-      for (const res of [
-        await preflight(origin),
-        await http.get('/v1/health/live').set('Origin', origin),
-      ]) {
-        // The control: no Allow-Origin, so the browser blocks the response. (The cors package
-        // still sends Allow-Credentials, which has no effect without a matching origin.)
-        expect(res.headers['access-control-allow-origin']).toBeUndefined();
-      }
-    });
-
-    it('never answers with a wildcard', async () => {
-      const res = await http.get('/v1/week-guides').set('Origin', ALLOWED);
-      expect(res.headers['access-control-allow-origin']).not.toBe('*');
     });
   });
 });
