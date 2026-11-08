@@ -28,7 +28,8 @@
     "test:e2e:cov": "vitest run --config ./vitest.config.e2e.ts --coverage",
     "openapi:export": "node scripts/export-openapi.mjs",
     "test:coverage": "vitest run --config ./vitest.config.coverage.ts --coverage",
-    "fields:reencrypt": "node scripts/reencrypt-fields.mjs"
+    "fields:reencrypt": "node scripts/reencrypt-fields.mjs",
+    "test:pentest": "vitest run --config ./vitest.config.pentest.ts"
   },
   "dependencies": {
     "@nestjs/common": "^12.0.1",
