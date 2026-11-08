@@ -6,6 +6,7 @@ import type { Express, NextFunction, Request, Response } from 'express';
 import { AUTH, type Auth } from './auth/auth.provider.js';
 import { AUTH_BASE_PATH, BLOCKED_AUTH_PREFIXES } from './auth/better-auth.js';
 import { clientIpMiddleware } from './auth/client-ip.js';
+import { jsonOnlyMiddleware } from './common/middleware/content-type.middleware.js';
 import { csrfMiddleware } from './common/middleware/csrf.middleware.js';
 import { requestIdMiddleware } from './common/middleware/request-id.middleware.js';
 import { createValidationPipe } from './common/validation.js';
@@ -30,6 +31,7 @@ export async function setupApp(app: INestApplication): Promise<void> {
     exposedHeaders: ['x-request-id', 'set-auth-token'],
   });
   app.use(csrfMiddleware(config.get('CORS_ORIGINS', { infer: true })));
+  app.use(jsonOnlyMiddleware);
   // Parameterised Better Auth routes that disabledPaths cannot match exactly.
   express.use(
     AUTH_BASE_PATH,

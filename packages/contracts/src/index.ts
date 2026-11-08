@@ -25,6 +25,8 @@ export const ErrorCode = z.enum([
    */
   'ACCOUNT_HAS_HEALTH_DATA',
   'PAYLOAD_TOO_LARGE',
+  /** 415: a request body that is not application/json. */
+  'UNSUPPORTED_MEDIA_TYPE',
   'RATE_LIMITED',
   'INTERNAL_ERROR',
 ]);

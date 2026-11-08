@@ -4,6 +4,28 @@
 
 Threat model: `docs/THREAT_MODEL.md`. Controls and tests: `docs/SECURITY_CHECKLIST.md`.
 
+### Hardening phase 3 — Input validation and output safety
+
+- **Request bodies must be JSON.** Any other body type now gets 415 `UNSUPPORTED_MEDIA_TYPE`
+  (new `ErrorCode`) instead of being silently ignored. Parser 415s (bad charset or encoding)
+  now use that code too, instead of `VALIDATION_ERROR`; the two existing tests were updated
+  for the new code and still check for a generic 4xx message.
+- **Authored content is checked server-side** on create and edit (`src/content/content-safety.ts`),
+  for titles, summaries, bodies and every nested string in structured sections. Refused: raw
+  HTML (tags, comments), numeric character references, and link targets other than https://
+  or site-relative paths. Obfuscated schemes are caught too (mixed case, embedded whitespace
+  or control characters, reference-style links).
+- New `ParseSlugPipe` for every `:slug` parameter (same pattern and 120-character limit used
+  at creation). A malformed slug is a 404 and never reaches the database.
+- Two array fields gained `ArrayMaxSize`. New unit tests:
+  - every DTO string has a length bound and every array a size bound (257 properties checked);
+  - only parameterised tagged-template raw SQL is used (`$queryRawUnsafe`,
+    `$executeRawUnsafe`, `Prisma.raw` and the function-call forms are forbidden).
+- New `test/security/input.e2e-spec.ts`: 415, malformed JSON, 413, mass assignment,
+  SQL-looking text stored literally, malformed path parameters, unsafe content refused, and
+  no credential or hash fields in responses or response schemas. Unit + e2e 843/843,
+  statements 97.23%.
+
 ### Hardening phase 2 — Authorization
 
 - `@Public(reason)` and `@OptionalAuth(reason)` now require a written reason. A new test lists

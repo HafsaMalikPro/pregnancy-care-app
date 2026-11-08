@@ -11,6 +11,7 @@ import {
 } from '@preconception/contracts';
 import { Transform, Type } from 'class-transformer';
 import {
+  ArrayMaxSize,
   IsArray,
   IsIn,
   IsInt,
@@ -73,6 +74,7 @@ export class RecipeQueryDto extends LocalePageQuery {
   @IsOptional()
   @Transform(csv)
   @IsArray()
+  @ArrayMaxSize(FoodAllergy.options.length)
   @IsIn(FoodAllergy.options, { each: true })
   excludeAllergens?: FoodAllergy[];
 }

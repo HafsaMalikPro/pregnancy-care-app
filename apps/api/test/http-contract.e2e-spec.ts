@@ -262,7 +262,7 @@ describe('HTTP contract (e2e)', () => {
         .post('/v1/health')
         .set('content-type', 'application/json; charset=klingon')
         .send('{}');
-      expectApiError(res, 415, 'VALIDATION_ERROR');
+      expectApiError(res, 415, 'UNSUPPORTED_MEDIA_TYPE');
     });
 
     it('rejects an unsupported content encoding with a 4xx', async () => {
@@ -271,7 +271,7 @@ describe('HTTP contract (e2e)', () => {
         .set('content-type', 'application/json')
         .set('content-encoding', 'compress')
         .send('{}');
-      expectApiError(res, 415, 'VALIDATION_ERROR');
+      expectApiError(res, 415, 'UNSUPPORTED_MEDIA_TYPE');
     });
   });
 

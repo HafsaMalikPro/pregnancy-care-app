@@ -120,7 +120,7 @@ describe('ApiExceptionFilter', () => {
   it('maps other parser client errors to their status with a generic message', () => {
     const out = run(parserError(415, 'charset.unsupported'));
     expect(out.status).toBe(415);
-    expect(out.body.error.code).toBe('VALIDATION_ERROR');
+    expect(out.body.error.code).toBe('UNSUPPORTED_MEDIA_TYPE');
     expect(out.body.error.message).toBe('The request is invalid.');
     expect(JSON.stringify(out.body)).not.toContain('raw parser message');
   });

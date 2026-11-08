@@ -1,3 +1,4 @@
+import { ParseSlugPipe } from '../common/pipes.js';
 import {
   Controller,
   Get,
@@ -27,8 +28,6 @@ import {
   LocaleQueryDto,
 } from './content.dto.js';
 import { toArticle, toSummary } from './content.mapper.js';
-
-const SLUG = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 
 @ApiTags('content')
 @ApiBearerAuth(SECURITY.bearer)
@@ -83,11 +82,10 @@ export class ArticlesController {
   @ApiOkResponse({ type: ArticleDto })
   @ApiErrors(401, 404)
   async get(
-    @Param('slug') slug: string,
+    @Param('slug', ParseSlugPipe) slug: string,
     @Query() q: LocaleQueryDto,
     @MaybeOwner() owner?: Owner,
   ): Promise<Article> {
-    if (!SLUG.test(slug)) throw new NotFoundException('Article not found.');
     const row = await this.prisma.article.findFirst({
       where: { kind: 'article', slug, locale: q.locale, status: 'published' },
     });

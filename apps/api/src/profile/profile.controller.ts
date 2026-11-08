@@ -21,6 +21,7 @@ import {
   SUPPORTED_LOCALES,
 } from '@preconception/contracts';
 import {
+  ArrayMaxSize,
   ArrayUnique,
   IsArray,
   IsBoolean,
@@ -109,6 +110,7 @@ class ProfileDto implements Profile {
   @IsOptional()
   @IsArray()
   @ArrayUnique()
+  @ArrayMaxSize(FoodAllergy.options.length)
   @IsIn(FoodAllergy.options, { each: true })
   foodAllergies: FoodAllergy[];
 

@@ -1,3 +1,4 @@
+import { assertSafeContent } from '../content/content-safety.js';
 import {
   BadRequestException,
   ConflictException,
@@ -151,6 +152,12 @@ export class AdminContentService {
     if (isStructured(kind)) {
       input = { ...input, sections: parseStructured(kind, input.sections) };
     }
+    assertSafeContent({
+      title: input.title,
+      summary: input.summary,
+      body: input.body,
+      sections: input.sections,
+    });
     if (kind === 'postpartum_guide') {
       const week = (input.sections as PostpartumGuideSections).week;
       if (input.slug !== postpartumGuideSlug(week)) {
@@ -218,6 +225,13 @@ export class AdminContentService {
     > & { structuredSections?: object },
     requestId?: string,
   ) {
+    assertSafeContent({
+      title: input.title,
+      summary: input.summary,
+      body: input.body,
+      sections: input.sections,
+      structuredSections: input.structuredSections,
+    });
     return this.prisma.$transaction(async (tx) => {
       const article = await this.find(tx, id);
       if (article.status !== 'draft') {

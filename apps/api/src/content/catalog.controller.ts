@@ -1,3 +1,4 @@
+import { ParseSlugPipe } from '../common/pipes.js';
 import {
   Controller,
   Get,
@@ -32,8 +33,6 @@ import {
   SlugLocaleQueryDto,
 } from './catalog.dto.js';
 import { CatalogService, toActivity, toRecipe } from './catalog.service.js';
-
-const SLUG = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 
 function common(q: {
   trimester?: number;
@@ -95,12 +94,10 @@ export class RecipesController {
   @ApiOkResponse({ type: RecipeDto })
   @ApiErrors(404)
   async get(
-    @Param('slug') slug: string,
+    @Param('slug', ParseSlugPipe) slug: string,
     @Query() q: SlugLocaleQueryDto,
   ): Promise<Recipe> {
-    const found = SLUG.test(slug)
-      ? await this.catalog.one('recipe', slug, q.locale)
-      : null;
+    const found = await this.catalog.one('recipe', slug, q.locale);
     if (!found) throw new NotFoundException('Recipe not found.');
     return toRecipe(found.row, found.review);
   }
@@ -146,12 +143,10 @@ export class ActivitiesController {
   @ApiOkResponse({ type: ActivityDto })
   @ApiErrors(404)
   async get(
-    @Param('slug') slug: string,
+    @Param('slug', ParseSlugPipe) slug: string,
     @Query() q: SlugLocaleQueryDto,
   ): Promise<Activity> {
-    const found = SLUG.test(slug)
-      ? await this.catalog.one('activity', slug, q.locale)
-      : null;
+    const found = await this.catalog.one('activity', slug, q.locale);
     if (!found) throw new NotFoundException('Activity not found.');
     return toActivity(found.row, found.review);
   }
@@ -195,12 +190,10 @@ export class MealPlansController {
   @ApiOkResponse({ type: MealPlanDto })
   @ApiErrors(404)
   async get(
-    @Param('slug') slug: string,
+    @Param('slug', ParseSlugPipe) slug: string,
     @Query() q: SlugLocaleQueryDto,
   ): Promise<MealPlan> {
-    const found = SLUG.test(slug)
-      ? await this.catalog.one('meal_plan', slug, q.locale)
-      : null;
+    const found = await this.catalog.one('meal_plan', slug, q.locale);
     if (!found) throw new NotFoundException('Meal plan not found.');
     return this.catalog.mealPlan(found.row, found.review);
   }
