@@ -22,18 +22,25 @@ describe('Security: rate-limit events (e2e)', () => {
     const http = request(app.getHttpServer());
     const since = new Date();
     const statuses: number[] = [];
+    const refused: string[] = [];
     for (let i = 0; i < 9; i++) {
       const res = await http
         .post('/v1/auth/sign-in/email')
         .send({ email: uniqueEmail('rl'), password: 'not-the-password-123' });
       statuses.push(res.status);
+      if (res.status === 429) refused.push(res.headers['x-request-id']);
     }
     expect(statuses.filter((s) => s === 429).length).toBeGreaterThanOrEqual(3);
     const { SecurityEventsService } =
       await import('../../src/audit/security-events.service.js');
     await app.get(SecurityEventsService).flush();
+    // Only this test's refusals: other suites produce 429s from the same address in parallel.
     const events = await prisma.auditEvent.findMany({
-      where: { action: 'security.rate_limited', createdAt: { gte: since } },
+      where: {
+        action: 'security.rate_limited',
+        requestId: { in: refused },
+        createdAt: { gte: since },
+      },
     });
     const forRoute = events.filter(
       (e) =>
