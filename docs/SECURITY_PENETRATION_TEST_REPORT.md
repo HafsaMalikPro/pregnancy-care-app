@@ -74,7 +74,12 @@ then F-01 (2FA replay on staff accounts), then F-04/F-03 (credential attacks).
 - Google Chrome driven by Playwright (visible window) against the website and API.
 - `pnpm audit --prod`: 0 advisories at any severity.
 - Negative control: the CSRF check was disabled on a throwaway branch (section 19.3).
-- **Not run:** the OWASP ZAP passive scan (the owner stopped it), and semgrep/CodeQL.
+- OWASP ZAP 2.16.1 API scan in safe mode (`-S`: passive only, no attack payloads), seeded
+  with the OpenAPI document, against `http://localhost:4000` (reached from the container as
+  `host.docker.internal`, this machine) while the API was connected only to
+  `preconception_e2e`. The owner stopped the command, but the scan had already finished;
+  output is in `docs/pentest/` (checked with gitleaks: no secrets).
+- **Not run:** semgrep/CodeQL.
 
 ## 5. Attack surface inventory
 
@@ -197,6 +202,19 @@ tasks (403). Drafts are never served publicly (404). Unsafe markup is refused be
   http (expected).
 - The boot guard refuses unsafe production settings (18 cases tested).
 - Dependencies: `pnpm audit --prod` reports 0. All dependencies: 1 moderate (development only).
+- **ZAP passive scan** (development mode, 145 operations):
+  - *Application Error Disclosure* (Medium) and *Debug Error Messages* (Low): **false
+    positives**. Both fire on `GET /docs/openapi.json`, whose content legitimately contains
+    "Internal Server Error" 23 times (descriptions of 500 responses). The response is 200, and
+    the route is 404 in production (DIS-01).
+  - *Insufficient Site Isolation (Spectre)* and *Unexpected Content-Type* (Low) on
+    `/v1/auth/error`, Better Auth's HTML error page (200 in development, a 302 in production):
+    see P-08.
+  - *Sensitive Information in URL* (Info): the admin user lookup takes `?email=` in the query
+    string: see P-09.
+  - *ZAP is Out of Date* (Low): 2.16.1 was chosen deliberately as an established release.
+  - Everything else was informational: 4xx responses to probe requests, cacheable public
+    content, session management identified.
 
 ## 15. End-to-end attack scenarios
 
@@ -296,10 +314,12 @@ tasks (403). Drafts are never served publicly (404). Unsafe markup is refused be
 | P-04 | Info | `TRUST_PROXY` must match the real proxy chain in deployment. Too broad lets clients spoof IPs (the default `false` is safe) |
 | P-05 | Info | Under heavy local parallel load (about 30 app instances against one Postgres limited to 100 connections), readiness checks timed out and pool connections failed with 500s. An availability consideration for pool sizing, not a vulnerability |
 | P-07 | Medium | F-02 on public routes without credentials (inferred, not separately run) |
+| P-08 | Low | `/v1/auth/error` (Better Auth HTML page) lacks Cross-Origin-Embedder-Policy (ZAP 90004). It has the strict CSP and no data; hardening only |
+| P-09 | Low | `GET /v1/admin/users?email=…` puts a person's email in the URL, where proxies or CDNs may log it (our own logs redact it). Prefer a POST search body |
 
 ## 18. Blocked and untested areas
 
-- **OWASP ZAP passive scan:** not run (the owner stopped it).
+- **OWASP ZAP active scan:** not run (only the passive scan ran).
 - **semgrep / CodeQL static analysis:** not run.
 - **Real deployment:** TLS, cookie domains, reverse proxy, WAF, secret manager, backups.
 - **Real email** (Resend) flows end to end: only the in-memory provider was used.
@@ -335,7 +355,7 @@ tasks (403). Drafts are never served publicly (404). Unsafe markup is refused be
 | Critical | 0 | 0 |
 | High | 0 | 0 |
 | Medium | 2 | 2 |
-| Low | 3 | 2 |
+| Low | 3 | 4 |
 | Informational | 0 | 2 |
 
 | Metric | Value |
@@ -345,7 +365,7 @@ tasks (403). Drafts are never served publicly (404). Unsafe markup is refused be
 | Endpoints passed | 141 |
 | Endpoints failed | 4 named (`verify-totp`, `sign-up/email`, `POST /shopping-list` and `POST /me/consents` for deep nesting), plus two class-wide issues: deep nesting on all validated-body routes, and the CORS preflight header |
 | Endpoints not tested | 0 for authentication enforcement; behavioural attacks did not cover every operation |
-| Attack scenarios attempted | 8 (A–H), 43 automated attacks, 4 browser runs, 1 negative control |
+| Attack scenarios attempted | 8 (A–H), 43 automated attacks, 4 browser runs, 1 negative control, 1 ZAP passive scan |
 | Attacks blocked | 40 of 43 |
 | Confirmed successful attacks | 3 automated (2FA-01, INJ-05, CORS-02) + 2 from the browser and policy runs (F-03, F-04) |
 
@@ -359,5 +379,5 @@ tasks (403). Drafts are never served publicly (404). Unsafe markup is refused be
 5. **F-05:** drop Allow-Credentials for refused origins.
 6. **P-01 to P-03:** track Better Auth support for hashed session tokens and `__Host-`
    cookies; consider hashed backup codes.
-7. **Before real patient data:** an independent manual penetration test, the ZAP scan, static
+7. **Before real patient data:** an independent manual penetration test, a ZAP active scan, static
    analysis, and a deployment review (TLS, domains, proxy, backups).
