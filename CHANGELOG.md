@@ -76,3 +76,17 @@
   `EMAIL_PROVIDER=none`.
 - `scripts/export-openapi.mjs` imports the app after setting its env (static ESM imports
   had loaded the config first).
+
+### Local environment setup
+
+- `apps/api/.env.example` rewritten by section (runtime, database, auth, cookies and CORS,
+  email, rate limiting, MFA, features, dev/tests). Every variable has its purpose, whether it's
+  required, allowed values and default. Secrets are empty.
+- New `src/config/env-example.spec.ts`: fails if the code reads a variable the template doesn't
+  list (or the template lists one the code never reads), or if the template holds a value that
+  looks like a secret.
+- `CORS_ORIGINS` is now validated: each entry must be an exact `scheme://host[:port]` origin.
+  Paths, trailing slashes and a missing scheme used to be accepted and then never matched.
+- Docker Postgres container is named `preconception-db` (same volume, data kept).
+- New `docs/LOCAL_SETUP.md`: prerequisites, generating the secret without printing it,
+  database, tests, seeds and troubleshooting.

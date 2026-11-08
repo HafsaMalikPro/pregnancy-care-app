@@ -1,4 +1,4 @@
-import { secureCookies, validateEnv } from './env.js';
+import { isExactOrigin, secureCookies, validateEnv } from './env.js';
 
 describe('validateEnv', () => {
   const base = {
@@ -156,6 +156,36 @@ describe('validateEnv', () => {
         validateEnv({ ...base, NODE_ENV: 'test', EMAIL_PROVIDER: 'memory' })
           .EMAIL_PROVIDER,
       ).toBe('memory');
+    });
+  });
+
+  describe('CORS_ORIGINS', () => {
+    it.each([
+      'http://localhost:3000',
+      'https://app.example.com',
+      'https://app.example.com:8443',
+    ])('accepts the exact origin %s', (origin) => {
+      expect(isExactOrigin(origin)).toBe(true);
+      expect(
+        validateEnv({ ...base, CORS_ORIGINS: origin }).CORS_ORIGINS,
+      ).toEqual([origin]);
+    });
+
+    it.each([
+      'localhost:3000',
+      'http://localhost:3000/',
+      'https://app.example.com/app',
+      'https://APP.example.com',
+      'ftp://files.example.com',
+      '*',
+    ])('rejects %s, naming only the variable', (origin) => {
+      expect(isExactOrigin(origin)).toBe(false);
+      expect(() =>
+        validateEnv({
+          ...base,
+          CORS_ORIGINS: `http://localhost:3000,${origin}`,
+        }),
+      ).toThrow('Invalid environment configuration: CORS_ORIGINS.1');
     });
   });
 });

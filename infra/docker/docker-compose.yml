@@ -3,6 +3,7 @@ name: preconception-local
 services:
   postgres:
     image: postgres:17-alpine
+    container_name: preconception-db
     environment:
       POSTGRES_USER: preconception
       POSTGRES_PASSWORD: preconception_local

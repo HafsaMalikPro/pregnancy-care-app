@@ -1,5 +1,18 @@
 import { z } from 'zod';
 
+/** True for "https://app.example.com" or "http://localhost:3000"; false for paths or slashes. */
+export function isExactOrigin(value: string): boolean {
+  try {
+    const url = new URL(value);
+    return (
+      (url.protocol === 'http:' || url.protocol === 'https:') &&
+      url.origin === value
+    );
+  } catch {
+    return false;
+  }
+}
+
 const EnvSchema = z.object({
   NODE_ENV: z
     .enum(['development', 'test', 'staging', 'production'])
@@ -43,6 +56,10 @@ const EnvSchema = z.object({
     .transform((v) => v === 'true'),
   /** Inactive anonymous sessions (and their data) expire after this many days. */
   ANONYMOUS_SESSION_TTL_DAYS: z.coerce.number().int().positive().default(180),
+  /**
+   * Exact origins (scheme://host[:port]). The browser's Origin header is compared verbatim, so
+   * a path, a trailing slash or a missing scheme would never match: those are rejected here.
+   */
   CORS_ORIGINS: z
     .string()
     .default('')
@@ -51,7 +68,8 @@ const EnvSchema = z.object({
         .split(',')
         .map((s) => s.trim())
         .filter(Boolean),
-    ),
+    )
+    .pipe(z.array(z.string().refine(isExactOrigin))),
   /**
    * Public base URL of the website. Password-reset and verification emails link to
    * `${APP_URL}/reset-password` and `${APP_URL}/verify-email`.
@@ -73,6 +91,9 @@ const EnvSchema = z.object({
     .transform((v) => v === 'true'),
   REMINDER_POLL_INTERVAL_MS: z.coerce.number().int().min(1000).default(30_000),
 });
+
+/** Every variable the API validates at boot (used by env-example.spec.ts). */
+export const ENV_KEYS = Object.keys(EnvSchema.shape);
 
 /** Settings that are only safe outside production, checked so a bad deploy fails at boot. */
 function checkCombinations(

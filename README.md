@@ -28,7 +28,7 @@ docs/             architecture, privacy-security, medical-safety, product, api
 ```sh
 pnpm install
 pnpm db:up                                  # Postgres on localhost:5434
-cp apps/api/.env.example apps/api/.env      # already present after first setup
+cp apps/api/.env.example apps/api/.env      # then generate the secret: docs/LOCAL_SETUP.md
 pnpm --filter @preconception/api db:migrate
 pnpm build                                  # shared packages must build before apps typecheck
 pnpm dev                                    # api + package watchers
