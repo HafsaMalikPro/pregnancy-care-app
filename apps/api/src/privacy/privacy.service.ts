@@ -1,3 +1,7 @@
+import {
+  ENCRYPTED_COLUMNS,
+  FieldCipherService,
+} from '../database/field-cipher.js';
 import { ConflictException, Injectable } from '@nestjs/common';
 import { EXPORT_FORMAT_VERSION } from '@preconception/contracts';
 import { AuditService } from '../audit/audit.service.js';
@@ -20,6 +24,7 @@ export class PrivacyService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly audit: AuditService,
+    private readonly cipher: FieldCipherService,
   ) {}
 
   async export(owner: Owner, requestId?: string) {
@@ -207,7 +212,10 @@ export class PrivacyService {
                 painRelief: b.painRelief,
                 supportPeople: b.supportPeople,
                 feedingIntention: b.feedingIntention,
-                notes: b.notes,
+                notes: this.cipher.decrypt(
+                  b.notes,
+                  ENCRYPTED_COLUMNS.birthNotes,
+                ),
               }
             : null;
         })(),
@@ -226,17 +234,20 @@ export class PrivacyService {
       dailyLogs: dailyLogs.map((d) => ({
         date: toIsoDate(d.date),
         symptoms: d.symptoms,
-        note: d.note,
+        note: this.cipher.decrypt(d.note, ENCRYPTED_COLUMNS.dailyLogNote),
         mood: d.mood,
         sleepMinutes: d.sleepMinutes,
         waterGlasses: d.waterGlasses,
         activityMinutes: d.activityMinutes,
-        questions: d.questions,
+        questions: this.cipher.decrypt(
+          d.questions,
+          ENCRYPTED_COLUMNS.dailyLogQuestions,
+        ),
       })),
       readinessProgress: progress.map((p) => ({
         task: p.task.key,
         completedAt: p.completedAt?.toISOString() ?? null,
-        note: p.note,
+        note: this.cipher.decrypt(p.note, ENCRYPTED_COLUMNS.taskNote),
       })),
       reminders: reminders.map((r) => ({
         kind: r.kind,
@@ -256,8 +267,11 @@ export class PrivacyService {
         title: a.title,
         startsAt: a.startsAt.toISOString(),
         location: a.location,
-        notes: a.notes,
-        questions: a.questions,
+        notes: this.cipher.decrypt(a.notes, ENCRYPTED_COLUMNS.appointmentNotes),
+        questions: this.cipher.decryptList(
+          a.questions,
+          ENCRYPTED_COLUMNS.appointmentQuestions,
+        ),
       })),
       mealLogs: mealLogs.map((m) => ({
         date: toIsoDate(m.date),
@@ -340,6 +354,18 @@ export class PrivacyService {
         data: { userId, kind: 'deletion', status: 'processing' },
       });
       await tx.anonymousSession.deleteMany({ where: { linkedUserId: userId } });
+      // Audit rows outlive the account without a link to it. audit_events is append-only;
+      // this transaction-local opt-in permits only clearing these ids (see migration
+      // 20261108130000_audit_append_only).
+      await tx.$executeRaw`SELECT set_config('app.audit_anonymise', 'on', true)`;
+      await tx.auditEvent.updateMany({
+        where: { actorUserId: userId },
+        data: { actorUserId: null },
+      });
+      await tx.auditEvent.updateMany({
+        where: { targetId: userId },
+        data: { targetId: null },
+      });
       await tx.user.delete({ where: { id: userId } });
       await tx.privacyJob.update({
         where: { id: job.id },
@@ -349,8 +375,8 @@ export class PrivacyService {
         {
           action: 'account.deleted',
           targetType: 'user',
-          targetId: userId,
           requestId,
+          metadata: { subjectRef: this.audit.subjectRef(userId) },
         },
         tx,
       );

@@ -118,11 +118,22 @@ describe('Privacy: export and deletion (e2e)', () => {
     ]) {
       expect(await count).toBe(0);
     }
-    // The job and audit records outlive the account, without a link to it.
+    // The job and audit records outlive the account, without a link to it: the deletion is
+    // recorded under a keyed pseudonym, never the user id.
+    const { AuditService } = await import('../src/audit/audit.service.js');
+    const ref = app.get(AuditService).subjectRef(user.id);
     const audit = await prisma.auditEvent.findFirst({
-      where: { action: 'account.deleted', targetId: user.id },
+      where: {
+        action: 'account.deleted',
+        metadata: { equals: { subjectRef: ref } },
+      },
     });
-    expect(audit).not.toBeNull();
+    expect(audit).toMatchObject({ targetId: null, actorUserId: null });
+    expect(
+      await prisma.auditEvent.count({
+        where: { OR: [{ actorUserId: user.id }, { targetId: user.id }] },
+      }),
+    ).toBe(0);
     const job = await prisma.privacyJob.findFirst({
       where: { kind: 'deletion', userId: null, completedAt: { not: null } },
       orderBy: { requestedAt: 'desc' },

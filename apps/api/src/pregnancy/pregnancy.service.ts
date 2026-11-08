@@ -1,4 +1,9 @@
 import {
+  ENCRYPTED_COLUMNS,
+  type FieldCipher,
+  FieldCipherService,
+} from '../database/field-cipher.js';
+import {
   BadRequestException,
   ConflictException,
   Injectable,
@@ -63,6 +68,7 @@ export interface DatingChange {
 export class PregnancyService {
   constructor(
     private readonly prisma: PrismaService,
+    private readonly cipher: FieldCipherService,
     private readonly consent: ConsentService,
     private readonly clock: OwnerClock,
     private readonly guides: WeekGuideService,
@@ -284,7 +290,7 @@ export class PregnancyService {
     const row = await this.prisma.birthPreferences.findUnique({
       where: { pregnancyId: active.id },
     });
-    return toBirthPreferences(row);
+    return toBirthPreferences(row, this.cipher);
   }
 
   async putBirthPreferences(
@@ -298,14 +304,14 @@ export class PregnancyService {
       painRelief: input.painRelief,
       supportPeople: input.supportPeople,
       feedingIntention: input.feedingIntention,
-      notes: input.notes,
+      notes: this.cipher.encrypt(input.notes, ENCRYPTED_COLUMNS.birthNotes),
     };
     const row = await this.prisma.birthPreferences.upsert({
       where: { pregnancyId: active.id },
       create: { pregnancyId: active.id, ...data },
       update: data,
     });
-    return toBirthPreferences(row);
+    return toBirthPreferences(row, this.cipher);
   }
 
   async timeline(owner: Owner): Promise<Timeline> {
@@ -352,7 +358,10 @@ export class PregnancyService {
   }
 }
 
-function toBirthPreferences(row: BirthPreferencesRow | null): BirthPreferences {
+function toBirthPreferences(
+  row: BirthPreferencesRow | null,
+  cipher: FieldCipher,
+): BirthPreferences {
   return {
     birthSetting:
       (row?.birthSetting as BirthPreferences['birthSetting']) ?? null,
@@ -360,7 +369,7 @@ function toBirthPreferences(row: BirthPreferencesRow | null): BirthPreferences {
     supportPeople: row?.supportPeople ?? [],
     feedingIntention:
       (row?.feedingIntention as BirthPreferences['feedingIntention']) ?? null,
-    notes: row?.notes ?? null,
+    notes: cipher.decrypt(row?.notes ?? null, ENCRYPTED_COLUMNS.birthNotes),
     updatedAt: row?.updatedAt.toISOString() ?? null,
   };
 }

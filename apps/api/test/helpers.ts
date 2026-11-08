@@ -15,6 +15,9 @@ import type { PrismaService } from '../src/database/prisma.service.js';
  * Rate limiting is off by default because every test request comes from one IP;
  * rate-limit.e2e-spec.ts turns it back on.
  */
+/** Test-only field-encryption keys (synthetic data only). */
+export const TEST_FIELD_KEYS = `t1:${Buffer.alloc(32, 7).toString('base64')},t0:${Buffer.alloc(32, 3).toString('base64')}`;
+
 export async function createTestApp(
   env: Record<string, string> = {},
   extraControllers: Type[] = [],
@@ -22,6 +25,12 @@ export async function createTestApp(
   Object.assign(process.env, {
     NODE_ENV: 'test',
     RATE_LIMIT_ENABLED: 'false',
+    // Field encryption on in every e2e suite. A fixed, test-only key (not a secret: it only
+    // ever protects synthetic test data).
+    FIELD_ENCRYPTION_KEYS: TEST_FIELD_KEYS,
+    FIELD_ENCRYPTION_ACTIVE_KEY: 't1',
+    // Tests call RetentionService.purge() directly instead of waiting for the timer.
+    RETENTION_PURGE_INTERVAL_MS: '0',
     // Tests publish content and create accounts; keep them off the dev database when a
     // disposable one is configured.
     ...(process.env.TEST_DATABASE_URL

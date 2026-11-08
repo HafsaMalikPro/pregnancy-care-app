@@ -1,3 +1,8 @@
+import {
+  ENCRYPTED_COLUMNS,
+  type FieldCipher,
+  FieldCipherService,
+} from '../database/field-cipher.js';
 import { ThrottleWrite } from '../common/throttle.js';
 import {
   BadRequestException,
@@ -44,6 +49,7 @@ const YEAR_MS = 366 * 86_400_000;
 export class AppointmentsController {
   constructor(
     private readonly prisma: PrismaService,
+    private readonly cipher: FieldCipherService,
     private readonly consent: ConsentService,
   ) {}
 
@@ -68,7 +74,7 @@ export class AppointmentsController {
       where: { ...ownerWhere(owner), startsAt: { gte: from, lte: to } },
       orderBy: { startsAt: 'asc' },
     });
-    return rows.map(toAppointment);
+    return rows.map((r) => toAppointment(r, this.cipher));
   }
 
   @ThrottleWrite('ownerWrite')
@@ -105,11 +111,17 @@ export class AppointmentsController {
         title: dto.title.trim(),
         startsAt: new Date(dto.startsAt),
         location: dto.location ?? null,
-        notes: dto.notes ?? null,
-        questions: dto.questions ?? [],
+        notes: this.cipher.encrypt(
+          dto.notes ?? null,
+          ENCRYPTED_COLUMNS.appointmentNotes,
+        ),
+        questions: this.cipher.encryptList(
+          dto.questions ?? [],
+          ENCRYPTED_COLUMNS.appointmentQuestions,
+        ),
       },
     });
-    return toAppointment(row);
+    return toAppointment(row, this.cipher);
   }
 
   @Get(':id')
@@ -120,7 +132,7 @@ export class AppointmentsController {
     @CurrentOwner() owner: Owner,
     @Param('id', ParseUUIDPipe) id: string,
   ): Promise<Appointment> {
-    return toAppointment(await this.find(owner, id));
+    return toAppointment(await this.find(owner, id), this.cipher);
   }
 
   @ThrottleWrite('ownerWrite')
@@ -146,11 +158,21 @@ export class AppointmentsController {
         ...(dto.title !== undefined && { title: dto.title.trim() }),
         ...(dto.startsAt !== undefined && { startsAt: new Date(dto.startsAt) }),
         ...(dto.location !== undefined && { location: dto.location }),
-        ...(dto.notes !== undefined && { notes: dto.notes }),
-        ...(dto.questions !== undefined && { questions: dto.questions }),
+        ...(dto.notes !== undefined && {
+          notes: this.cipher.encrypt(
+            dto.notes,
+            ENCRYPTED_COLUMNS.appointmentNotes,
+          ),
+        }),
+        ...(dto.questions !== undefined && {
+          questions: this.cipher.encryptList(
+            dto.questions,
+            ENCRYPTED_COLUMNS.appointmentQuestions,
+          ),
+        }),
       },
     });
-    return toAppointment(row);
+    return toAppointment(row, this.cipher);
   }
 
   @ThrottleWrite('ownerWrite')
@@ -179,15 +201,21 @@ export class AppointmentsController {
   }
 }
 
-export function toAppointment(row: AppointmentRow): Appointment {
+export function toAppointment(
+  row: AppointmentRow,
+  cipher: FieldCipher,
+): Appointment {
   return {
     id: row.id,
     kind: row.kind as AppointmentKind,
     title: row.title,
     startsAt: row.startsAt.toISOString(),
     location: row.location,
-    notes: row.notes,
-    questions: row.questions,
+    notes: cipher.decrypt(row.notes, ENCRYPTED_COLUMNS.appointmentNotes),
+    questions: cipher.decryptList(
+      row.questions,
+      ENCRYPTED_COLUMNS.appointmentQuestions,
+    ),
     pregnancyId: row.pregnancyId,
     createdAt: row.createdAt.toISOString(),
     updatedAt: row.updatedAt.toISOString(),

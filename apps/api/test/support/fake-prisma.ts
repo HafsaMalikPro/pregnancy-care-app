@@ -17,6 +17,8 @@ export function fakePrisma(overrides: Record<string, Partial<Model>> = {}) {
         findFirst: vi.fn().mockResolvedValue(null),
         findUnique: vi.fn().mockResolvedValue(null),
         count: vi.fn().mockResolvedValue(0),
+        updateMany: vi.fn().mockResolvedValue({ count: 0 }),
+        deleteMany: vi.fn().mockResolvedValue({ count: 0 }),
         create: vi.fn((args: { data: object }) =>
           Promise.resolve({ id: `${name}-1`, ...args.data }),
         ),
@@ -30,6 +32,7 @@ export function fakePrisma(overrides: Record<string, Partial<Model>> = {}) {
   };
   const prisma: Record<string | symbol, unknown> = {
     $transaction: vi.fn((fn: (tx: unknown) => unknown) => fn(proxy)),
+    $executeRaw: vi.fn().mockResolvedValue(0),
   };
   const proxy: unknown = new Proxy(prisma, {
     get: (target, prop) =>

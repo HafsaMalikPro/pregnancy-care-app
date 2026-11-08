@@ -1,4 +1,7 @@
+import { createHmac } from 'node:crypto';
 import { Injectable } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
+import type { Env } from '../config/env.js';
 import type { Prisma } from '../generated/prisma/client.js';
 import { PrismaService } from '../database/prisma.service.js';
 
@@ -15,7 +18,20 @@ export interface AuditEntry {
 
 @Injectable()
 export class AuditService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly config: ConfigService<Env, true>,
+  ) {}
+
+  /**
+   * A stable pseudonym for a deleted person, for audit rows that must not keep their id.
+   * Keyed with the server secret: someone holding it can confirm that a known id was deleted,
+   * but nobody can recover the id from the pseudonym.
+   */
+  subjectRef(userId: string): string {
+    const key = this.config.get('BETTER_AUTH_SECRET', { infer: true });
+    return `sub_${createHmac('sha256', key).update(`audit-subject:${userId}`).digest('hex').slice(0, 32)}`;
+  }
 
   record(entry: AuditEntry, tx: Prisma.TransactionClient = this.prisma) {
     return tx.auditEvent.create({

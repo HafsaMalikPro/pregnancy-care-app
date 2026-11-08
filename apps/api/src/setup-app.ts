@@ -7,6 +7,7 @@ import { AUTH, type Auth } from './auth/auth.provider.js';
 import { AUTH_BASE_PATH, BLOCKED_AUTH_PREFIXES } from './auth/better-auth.js';
 import { clientIpMiddleware } from './auth/client-ip.js';
 import { jsonOnlyMiddleware } from './common/middleware/content-type.middleware.js';
+import { createAppLogger } from './common/logging/redacting-logger.js';
 import { csrfMiddleware } from './common/middleware/csrf.middleware.js';
 import { applySecurityHeaders } from './common/middleware/security-headers.js';
 import { requestIdMiddleware } from './common/middleware/request-id.middleware.js';
@@ -18,6 +19,8 @@ import { buildOpenApiDocument } from './openapi.js';
 export async function setupApp(app: INestApplication): Promise<void> {
   const config = app.get<ConfigService<Env, true>>(ConfigService);
 
+  // Every log line goes through redaction (and is JSON in production).
+  app.useLogger(createAppLogger(config.get('NODE_ENV', { infer: true })));
   const express = app.getHttpAdapter().getInstance() as Express;
   applySecurityHeaders(express);
   // Which proxy hops may set X-Forwarded-For (never "any"). req.ip, the Nest throttler and

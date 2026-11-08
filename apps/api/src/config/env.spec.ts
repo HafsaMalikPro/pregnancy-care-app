@@ -89,6 +89,8 @@ describe('validateEnv', () => {
       // Production also checks secret quality (see "production secret quality").
       BETTER_AUTH_SECRET: randomBytes(32).toString('base64'),
       NODE_ENV: 'production',
+      FIELD_ENCRYPTION_KEYS: `k1:${randomBytes(32).toString('base64')}`,
+      FIELD_ENCRYPTION_ACTIVE_KEY: 'k1',
       BETTER_AUTH_URL: 'https://api.example.com',
       APP_URL: 'https://app.example.com',
       CORS_ORIGINS: 'https://app.example.com',
@@ -229,6 +231,8 @@ describe('validateEnv', () => {
     const prod = {
       ...base,
       NODE_ENV: 'production',
+      FIELD_ENCRYPTION_KEYS: `k1:${randomBytes(32).toString('base64')}`,
+      FIELD_ENCRYPTION_ACTIVE_KEY: 'k1',
       BETTER_AUTH_URL: 'https://api.example.com',
       APP_URL: 'https://app.example.com',
       CORS_ORIGINS: 'https://app.example.com',

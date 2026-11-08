@@ -4,6 +4,36 @@
 
 Threat model: `docs/THREAT_MODEL.md`. Controls and tests: `docs/SECURITY_CHECKLIST.md`.
 
+### Hardening phase 6 — Data protection and privacy
+
+- **Field encryption** (AES-256-GCM, key id in every value, column name as authenticated data)
+  for journal notes and questions, checklist notes, appointment notes and questions, and
+  birth-preference notes. Production requires `FIELD_ENCRYPTION_KEYS` and
+  `FIELD_ENCRYPTION_ACTIVE_KEY`. Legacy plaintext still reads.
+  `pnpm --filter api fields:reencrypt` encrypts existing rows and rotates keys (idempotent).
+  The export decrypts. Every e2e suite now runs with encryption on.
+- **Redacting logger** for Nest and Better Auth: credentials, cookies, password and token
+  fields, email mailboxes, connection strings and opaque tokens are removed, while UUIDs are
+  kept for correlation. JSON lines in production.
+- **Account deletion anonymises the audit trail.** Earlier events lose the person's actor and
+  target ids (the append-only trigger's one permitted change). The deletion event stores a
+  keyed pseudonym instead of the user id. The two existing assertions that looked the event up
+  by raw user id were updated to look it up by pseudonym.
+- **Retention purge** every `RETENTION_PURGE_INTERVAL_MS` (6 h): expired guests with their
+  data, deliveries after 90 days, expired sessions and tokens, stale lockout counters, and
+  privacy jobs after 3 years. Audit events are not purged.
+- New `docs/DEPLOYMENT_SECURITY.md` (data at rest, keys and rotation, retention, logs).
+- New tests:
+  - ciphertext in every column, with plaintext through the API and export;
+  - rotation and legacy migration;
+  - a tampered value is a generic 500;
+  - no secrets in logs for a failed sign-in or a 500;
+  - no SQL or Prisma detail in a 409;
+  - no row references a deleted person (all tables scanned);
+  - retention purge;
+  - cipher and redaction unit tests.
+- Unit + e2e 895/895, statements 96.64%.
+
 ### Hardening phase 5 — Rate limits and resource protection
 
 - Every write route now has its own limit. New `ownerWrite` (60/min) covers 36 owner writes;

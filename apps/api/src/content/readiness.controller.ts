@@ -1,3 +1,8 @@
+import {
+  ENCRYPTED_COLUMNS,
+  type FieldCipher,
+  FieldCipherService,
+} from '../database/field-cipher.js';
 import { ThrottleWrite } from '../common/throttle.js';
 import {
   Body,
@@ -116,6 +121,7 @@ export type TaskWithArticle = TaskRow & { article: Article | null };
 export class ReadinessController {
   constructor(
     private readonly prisma: PrismaService,
+    private readonly cipher: FieldCipherService,
     private readonly consent: ConsentService,
     private readonly entitlements: EntitlementsService,
     private readonly pregnancy: PregnancyContext,
@@ -156,6 +162,7 @@ export class ReadinessController {
         byTask.get(t.id),
         t.premium && !premium,
         active?.week ?? null,
+        this.cipher,
       ),
     );
   }
@@ -186,7 +193,7 @@ export class ReadinessController {
 
     const data = {
       completedAt: dto.completed ? new Date() : null,
-      note: dto.note ?? null,
+      note: this.cipher.encrypt(dto.note ?? null, ENCRYPTED_COLUMNS.taskNote),
     };
     const existing = await this.prisma.userTaskProgress.findFirst({
       where: { ...ownerWhere(owner), taskId },
@@ -211,6 +218,7 @@ export class ReadinessController {
       row,
       false,
       (await this.pregnancy.active(owner))?.week ?? null,
+      this.cipher,
     );
   }
 }
@@ -220,6 +228,7 @@ export function toReadinessTask(
   progress: UserTaskProgress | undefined,
   locked: boolean,
   week: number | null,
+  cipher: FieldCipher,
 ): ReadinessTask {
   return {
     id: task.id,
@@ -232,7 +241,7 @@ export function toReadinessTask(
     articleSlug:
       task.article?.status === 'published' ? task.article.slug : null,
     completedAt: progress?.completedAt?.toISOString() ?? null,
-    note: progress?.note ?? null,
+    note: cipher.decrypt(progress?.note ?? null, ENCRYPTED_COLUMNS.taskNote),
     fromWeek: task.fromWeek,
     toWeek: task.toWeek,
     recommendedNow:

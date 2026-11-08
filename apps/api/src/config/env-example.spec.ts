@@ -68,7 +68,11 @@ describe('.env.example', () => {
 
   it('contains no secret values', () => {
     const text = readFileSync(join(API_ROOT, '.env.example'), 'utf8');
-    for (const key of ['BETTER_AUTH_SECRET', 'RESEND_API_KEY']) {
+    for (const key of [
+      'BETTER_AUTH_SECRET',
+      'RESEND_API_KEY',
+      'FIELD_ENCRYPTION_KEYS',
+    ]) {
       expect(text).toMatch(new RegExp(`^${key}=$`, 'm'));
     }
     // No long random-looking tokens anywhere: 32+ base64/hex characters in a row that mix

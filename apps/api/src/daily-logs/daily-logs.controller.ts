@@ -1,3 +1,8 @@
+import {
+  ENCRYPTED_COLUMNS,
+  type FieldCipher,
+  FieldCipherService,
+} from '../database/field-cipher.js';
 import { ThrottleWrite } from '../common/throttle.js';
 import {
   BadRequestException,
@@ -161,6 +166,7 @@ class DailyLogDto implements DailyLog {
 export class DailyLogsController {
   constructor(
     private readonly prisma: PrismaService,
+    private readonly cipher: FieldCipherService,
     private readonly consent: ConsentService,
     private readonly clock: OwnerClock,
   ) {}
@@ -188,7 +194,7 @@ export class DailyLogsController {
       },
       orderBy: { date: 'asc' },
     });
-    return rows.map(toDto);
+    return rows.map((r) => toDto(r, this.cipher));
   }
 
   @Get(':date')
@@ -204,7 +210,7 @@ export class DailyLogsController {
       where: { ...ownerWhere(owner), date: fromIsoDate(date) },
     });
     if (!row) throw new NotFoundException('No log for this date.');
-    return toDto(row);
+    return toDto(row, this.cipher);
   }
 
   @ThrottleWrite('ownerWrite')
@@ -228,14 +234,22 @@ export class DailyLogsController {
     }
     const data = {
       symptoms: dto.symptoms,
-      note: dto.note ?? null,
+      note: this.cipher.encrypt(
+        dto.note ?? null,
+        ENCRYPTED_COLUMNS.dailyLogNote,
+      ),
       ...(dto.mood !== undefined && { mood: dto.mood }),
       ...(dto.sleepMinutes !== undefined && { sleepMinutes: dto.sleepMinutes }),
       ...(dto.waterGlasses !== undefined && { waterGlasses: dto.waterGlasses }),
       ...(dto.activityMinutes !== undefined && {
         activityMinutes: dto.activityMinutes,
       }),
-      ...(dto.questions !== undefined && { questions: dto.questions }),
+      ...(dto.questions !== undefined && {
+        questions: this.cipher.encrypt(
+          dto.questions,
+          ENCRYPTED_COLUMNS.dailyLogQuestions,
+        ),
+      }),
     };
     const day = fromIsoDate(date);
     const row =
@@ -255,7 +269,7 @@ export class DailyLogsController {
             create: { anonymousSessionId: owner.id, date: day, ...data },
             update: data,
           });
-    return toDto(row);
+    return toDto(row, this.cipher);
   }
 
   @ThrottleWrite('ownerWrite')
@@ -276,16 +290,19 @@ export class DailyLogsController {
   }
 }
 
-function toDto(row: DailyLogRow): DailyLog {
+function toDto(row: DailyLogRow, cipher: FieldCipher): DailyLog {
   return {
     date: toIsoDate(row.date),
     symptoms: row.symptoms as SymptomCode[],
-    note: row.note,
+    note: cipher.decrypt(row.note, ENCRYPTED_COLUMNS.dailyLogNote),
     mood: (row.mood as MoodCode | null) ?? null,
     sleepMinutes: row.sleepMinutes,
     waterGlasses: row.waterGlasses,
     activityMinutes: row.activityMinutes,
-    questions: row.questions,
+    questions: cipher.decrypt(
+      row.questions,
+      ENCRYPTED_COLUMNS.dailyLogQuestions,
+    ),
     updatedAt: row.updatedAt.toISOString(),
   };
 }

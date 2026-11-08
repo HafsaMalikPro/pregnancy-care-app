@@ -8,6 +8,7 @@ import {
   twoFactor,
 } from 'better-auth/plugins';
 import { Logger } from '@nestjs/common';
+import { RedactingLogger } from '../common/logging/redacting-logger.js';
 import { type Env, secureCookies } from '../config/env.js';
 import type { PrismaService } from '../database/prisma.service.js';
 import type { EmailMessage, EmailSender } from '../email/email-sender.js';
@@ -123,6 +124,7 @@ const field = (body: unknown, key: string): string | null => {
 };
 
 const logger = new Logger('Auth');
+const authLibraryLogger = new RedactingLogger({ context: 'BetterAuth' });
 
 /**
  * Sends without awaiting, so response time doesn't reveal whether an address is registered.
@@ -297,6 +299,21 @@ export function createAuth(
       }),
     ],
     telemetry: { enabled: false },
+    // Better Auth's own messages go through the same redaction as the rest of the API.
+    logger: {
+      level: env.NODE_ENV === 'production' ? 'warn' : 'info',
+      log: (level, message, ...args) => {
+        const method =
+          level === 'error'
+            ? 'error'
+            : level === 'warn'
+              ? 'warn'
+              : level === 'debug'
+                ? 'debug'
+                : 'log';
+        authLibraryLogger[method](message, ...args);
+      },
+    },
   });
 }
 

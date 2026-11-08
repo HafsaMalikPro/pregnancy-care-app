@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { parseKeys } from '../database/field-keys.js';
 
 const PROXY_KEYWORDS = new Set(['loopback', 'linklocal', 'uniquelocal']);
 const IPV4 = /^(25[0-5]|2[0-4]\d|1?\d?\d)(\.(25[0-5]|2[0-4]\d|1?\d?\d)){3}$/;
@@ -53,6 +54,13 @@ const EnvSchema = z.object({
     .min(1000)
     .max(120_000)
     .default(15_000),
+  /**
+   * Field-encryption keys for sensitive free text: `<id>:<base64 32-byte key>`, comma-separated
+   * (old keys stay listed for reading during rotation). Required in production.
+   */
+  FIELD_ENCRYPTION_KEYS: z.string().optional(),
+  /** The key id used for new writes. Must be one of FIELD_ENCRYPTION_KEYS. */
+  FIELD_ENCRYPTION_ACTIVE_KEY: z.string().optional(),
   /** Signs and encrypts Better Auth sessions and 2FA secrets. At least 32 random characters. */
   BETTER_AUTH_SECRET: z.string().min(32),
   /** Public base URL of this API, e.g. https://api.example.com. */
@@ -151,6 +159,12 @@ const EnvSchema = z.object({
     .enum(['true', 'false'])
     .default('false')
     .transform((v) => v === 'true'),
+  /** How often the retention purge runs (ms). 0 turns it off. Default 6 hours. */
+  RETENTION_PURGE_INTERVAL_MS: z.coerce
+    .number()
+    .int()
+    .min(0)
+    .default(6 * 3_600_000),
   REMINDER_POLL_INTERVAL_MS: z.coerce.number().int().min(1000).default(30_000),
 });
 
@@ -165,6 +179,19 @@ function checkCombinations(
   const issue = (path: string, message: string) =>
     ctx.addIssue({ code: 'custom', path: [path], message });
 
+  if (env.FIELD_ENCRYPTION_KEYS || env.FIELD_ENCRYPTION_ACTIVE_KEY) {
+    try {
+      const keys = parseKeys(env.FIELD_ENCRYPTION_KEYS ?? '');
+      if (
+        !env.FIELD_ENCRYPTION_ACTIVE_KEY ||
+        !keys.has(env.FIELD_ENCRYPTION_ACTIVE_KEY)
+      ) {
+        issue('FIELD_ENCRYPTION_ACTIVE_KEY', 'must name a configured key');
+      }
+    } catch {
+      issue('FIELD_ENCRYPTION_KEYS', 'invalid key list');
+    }
+  }
   if (env.EMAIL_PROVIDER === 'resend') {
     if (!env.EMAIL_FROM) issue('EMAIL_FROM', 'required for resend');
     if (!env.RESEND_API_KEY) issue('RESEND_API_KEY', 'required for resend');
@@ -176,6 +203,9 @@ function checkCombinations(
     issue('EMAIL_PROVIDER', 'memory is for tests only');
   }
   if (env.NODE_ENV !== 'production') return;
+  if (!env.FIELD_ENCRYPTION_KEYS || !env.FIELD_ENCRYPTION_ACTIVE_KEY) {
+    issue('FIELD_ENCRYPTION_KEYS', 'required in production');
+  }
   if (weakSecret(env.BETTER_AUTH_SECRET)) {
     issue('BETTER_AUTH_SECRET', 'too weak or a placeholder');
   }

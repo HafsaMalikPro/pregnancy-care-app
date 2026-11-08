@@ -1,3 +1,4 @@
+import { FieldCipherService } from '../database/field-cipher.js';
 import {
   Controller,
   Get,
@@ -147,6 +148,7 @@ class PostpartumStatusDto implements PostpartumStatus {
 export class JourneyController {
   constructor(
     private readonly prisma: PrismaService,
+    private readonly cipher: FieldCipherService,
     private readonly catalog: CatalogService,
     private readonly journey: JourneyStage,
     private readonly pregnancy: PregnancyContext,
@@ -293,7 +295,13 @@ export class JourneyController {
       week,
       guide: guide ? toPostpartumGuide(guide.row, guide.review) : null,
       recoveryTasks: tasks.map((t) =>
-        toReadinessTask(t, byTask.get(t.id), t.premium && !unlocked, null),
+        toReadinessTask(
+          t,
+          byTask.get(t.id),
+          t.premium && !unlocked,
+          null,
+          this.cipher,
+        ),
       ),
       disclaimer: POSTPARTUM_DISCLAIMER,
     };

@@ -1,3 +1,7 @@
+import {
+  FieldCipher,
+  type FieldCipherService,
+} from '../database/field-cipher.js';
 import { ConflictException } from '@nestjs/common';
 import { fakePrisma } from '../../test/support/fake-prisma.js';
 import type { AuditService } from '../audit/audit.service.js';
@@ -21,8 +25,15 @@ const guest: Owner = { kind: 'anonymous', id: 'g1', expiresAt: new Date() };
 
 function setup(overrides: Parameters<typeof fakePrisma>[0] = {}) {
   const { prisma, model } = fakePrisma(overrides);
-  const audit = { record: vi.fn().mockResolvedValue(undefined) };
-  const service = new PrivacyService(prisma, audit as unknown as AuditService);
+  const audit = {
+    record: vi.fn().mockResolvedValue(undefined),
+    subjectRef: (id: string) => `sub_${id}`,
+  };
+  const service = new PrivacyService(
+    prisma,
+    audit as unknown as AuditService,
+    new FieldCipher(new Map(), null) as FieldCipherService,
+  );
   return { service, model, audit };
 }
 
@@ -180,13 +191,25 @@ describe('PrivacyService.deleteAccount', () => {
       where: { linkedUserId: 'u1' },
     });
     expect(del).toHaveBeenCalledWith({ where: { id: 'u1' } });
+    // Audit references are cleared, not deleted.
+    expect(model('auditEvent').updateMany).toHaveBeenCalledWith({
+      where: { actorUserId: 'u1' },
+      data: { actorUserId: null },
+    });
+    expect(model('auditEvent').updateMany).toHaveBeenCalledWith({
+      where: { targetId: 'u1' },
+      data: { targetId: null },
+    });
     expect(model('privacyJob').update).toHaveBeenCalledWith(
       expect.objectContaining({
         data: expect.objectContaining({ status: 'completed' }),
       }),
     );
     expect(audit.record).toHaveBeenCalledWith(
-      expect.objectContaining({ action: 'account.deleted', targetId: 'u1' }),
+      expect.objectContaining({
+        action: 'account.deleted',
+        metadata: { subjectRef: 'sub_u1' },
+      }),
       expect.anything(),
     );
   });

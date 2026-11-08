@@ -34,7 +34,22 @@ SECRET="$(openssl rand -base64 48)" node -e '
 '
 ```
 
-`BETTER_AUTH_SECRET` is the only secret the API needs locally. Everything else in
+Optional locally, required in production: a field-encryption key, written the same way:
+
+```sh
+K="$(openssl rand -base64 32)" node -e '
+  const fs = require("fs");
+  const f = ".env";
+  fs.writeFileSync(f, fs.readFileSync(f, "utf8")
+    .replace(/^FIELD_ENCRYPTION_KEYS=.*$/m, () => "FIELD_ENCRYPTION_KEYS=k1:" + process.env.K)
+    .replace(/^FIELD_ENCRYPTION_ACTIVE_KEY=.*$/m, "FIELD_ENCRYPTION_ACTIVE_KEY=k1"));
+'
+```
+
+Without it, encryption is off locally and the API logs a warning. Rotation and migration of
+existing data: `docs/DEPLOYMENT_SECURITY.md`.
+
+`BETTER_AUTH_SECRET` is the only other secret the API needs locally. Everything else in
 `.env.example` already has a safe local value. Every variable is documented there: what it does,
 whether it's required, allowed values and its default. `src/config/env-example.spec.ts` fails if
 the code reads a variable the template doesn't list.
@@ -127,9 +142,5 @@ loaded into a real environment.
 
 ## Not configurable yet
 
-These are often expected in this kind of setup, but **the code does not read them**, so they are
-not in `.env.example` (`TRUST_PROXY` now exists; see `.env.example`):
-
-- A field-encryption key: no application-level field encryption exists. Better Auth encrypts
-  two-factor secrets with `BETTER_AUTH_SECRET`.
-- A log level: logging is not configurable by environment.
+There is no log-level variable: logging is fixed by `NODE_ENV` (JSON and redacted in
+production).
