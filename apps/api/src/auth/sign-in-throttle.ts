@@ -59,7 +59,9 @@ export class SignInThrottle {
     return times.length ? new Date(Math.max(...times)) : null;
   }
 
-  async recordFailure(email: string, ip: string | null): Promise<void> {
+  /** Records a failure; returns the longest lock it started (seconds), or 0. */
+  async recordFailure(email: string, ip: string | null): Promise<number> {
+    let locked = 0;
     for (const { key, policy } of this.keys(email, ip)) {
       // Atomic: concurrent failures each count. The window restarts once it has passed and
       // no lock is running.
@@ -79,12 +81,14 @@ export class SignInThrottle {
         RETURNING failures`;
       const seconds = lockSeconds(row.failures, policy);
       if (seconds > 0) {
+        locked = Math.max(locked, seconds);
         await this.prisma.$executeRaw`
           UPDATE auth_throttles
           SET locked_until = now() + make_interval(secs => ${seconds})
           WHERE key = ${key}`;
       }
     }
+    return locked;
   }
 
   async recordSuccess(email: string): Promise<void> {

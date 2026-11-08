@@ -22,7 +22,10 @@ function originOf(value: string | undefined): string | null {
  *
  * Better Auth's own routes (/v1/auth) run its built-in origin check against the same list.
  */
-export function csrfMiddleware(allowedOrigins: string[]): RequestHandler {
+export function csrfMiddleware(
+  allowedOrigins: string[],
+  onRefused: (req: Request) => void = () => {},
+): RequestHandler {
   const allowed = new Set(allowedOrigins);
   return (req: Request, res: Response, next: NextFunction) => {
     if (SAFE_METHODS.has(req.method)) return next();
@@ -31,6 +34,7 @@ export function csrfMiddleware(allowedOrigins: string[]): RequestHandler {
     const origin =
       originOf(req.header('origin')) ?? originOf(req.header('referer'));
     if (origin && allowed.has(origin)) return next();
+    onRefused(req);
     res.status(403).json({
       error: {
         code: 'FORBIDDEN',

@@ -12,6 +12,10 @@ import type { StaffRole } from '@preconception/contracts';
 import { fromNodeHeaders } from 'better-auth/node';
 import type { Request } from 'express';
 import type { Env } from '../config/env.js';
+import {
+  SECURITY_EVENTS,
+  SecurityEventsService,
+} from '../audit/security-events.service.js';
 import { PrismaService } from '../database/prisma.service.js';
 import {
   hashAnonymousSecret,
@@ -35,6 +39,7 @@ export class AuthGuard implements CanActivate {
     private readonly prisma: PrismaService,
     private readonly config: ConfigService<Env, true>,
     @Inject(AUTH) private readonly auth: Auth,
+    private readonly security: SecurityEventsService,
   ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
@@ -54,10 +59,24 @@ export class AuthGuard implements CanActivate {
       return true;
     }
     if (owner.kind !== 'user') {
+      if (requirement.kind === 'staff')
+        this.denied(req, null, 'not_an_account');
       throw new ForbiddenException('A registered account is required.');
     }
-    if (requirement.kind === 'staff')
-      this.assertStaff(owner.user, requirement.roles);
+    if (requirement.kind === 'staff') {
+      try {
+        this.assertStaff(owner.user, requirement.roles);
+      } catch (err) {
+        this.denied(
+          req,
+          owner.user,
+          owner.user.staffRole && !owner.user.twoFactorEnabled
+            ? 'two_factor_required'
+            : 'role',
+        );
+        throw err;
+      }
+    }
     return true;
   }
 
@@ -125,6 +144,23 @@ export class AuthGuard implements CanActivate {
       });
     }
     return { kind: 'anonymous', id: session.id, expiresAt };
+  }
+
+  private denied(
+    req: Request,
+    user: SessionUser | null,
+    reason: 'role' | 'two_factor_required' | 'not_an_account',
+  ): void {
+    this.security.record(SECURITY_EVENTS.staffAccessDenied, {
+      actorUserId: user?.id ?? null,
+      actorRole: user?.staffRole ?? null,
+      requestId: req.requestId,
+      ip: req.ip ?? null,
+      metadata: {
+        route: `${req.method} ${req.route?.path ?? 'unmatched'}`,
+        reason,
+      },
+    });
   }
 
   private assertStaff(user: SessionUser, roles: StaffRole[]): void {

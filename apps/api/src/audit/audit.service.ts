@@ -24,13 +24,18 @@ export class AuditService {
   ) {}
 
   /**
-   * A stable pseudonym for a deleted person, for audit rows that must not keep their id.
-   * Keyed with the server secret: someone holding it can confirm that a known id was deleted,
-   * but nobody can recover the id from the pseudonym.
+   * A keyed pseudonym for a personal value (an email, an IP, a deleted user's id), so audit and
+   * security rows can be correlated without storing the value. Keyed with the server secret:
+   * someone holding it can check whether a known value matches, nobody can reverse it.
    */
-  subjectRef(userId: string): string {
+  ref(kind: string, value: string): string {
     const key = this.config.get('BETTER_AUTH_SECRET', { infer: true });
-    return `sub_${createHmac('sha256', key).update(`audit-subject:${userId}`).digest('hex').slice(0, 32)}`;
+    return `${kind}_${createHmac('sha256', key).update(`audit-${kind}:${value}`).digest('hex').slice(0, 32)}`;
+  }
+
+  /** The pseudonym recorded for a deleted account (see PrivacyService.deleteAccount). */
+  subjectRef(userId: string): string {
+    return this.ref('sub', userId);
   }
 
   record(entry: AuditEntry, tx: Prisma.TransactionClient = this.prisma) {

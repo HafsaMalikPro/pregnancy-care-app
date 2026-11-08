@@ -23,6 +23,8 @@ export function requestIdMiddleware(
   const incoming = req.header(REQUEST_ID_HEADER);
   const id = incoming && SAFE_ID.test(incoming) ? incoming : randomUUID();
   req.requestId = id;
+  // Also on the request headers, so handlers outside Nest (Better Auth hooks) can read it.
+  if (req.headers) req.headers[REQUEST_ID_HEADER] = id;
   res.setHeader(REQUEST_ID_HEADER, id);
   next();
 }

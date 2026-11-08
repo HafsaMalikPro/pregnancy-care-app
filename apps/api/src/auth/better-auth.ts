@@ -23,6 +23,11 @@ import {
   verifyPassword,
 } from './password.js';
 import { SignInThrottle } from './sign-in-throttle.js';
+import {
+  SECURITY_EVENTS,
+  type SecurityEventsService,
+} from '../audit/security-events.service.js';
+import { REQUEST_ID_HEADER } from '../common/middleware/request-id.middleware.js';
 
 export const AUTH_BASE_PATH = '/v1/auth';
 export { PASSWORD_MIN_LENGTH } from './password.js';
@@ -142,6 +147,7 @@ export function createAuth(
   prisma: PrismaService,
   env: AuthEnv,
   email: EmailSender,
+  security: Pick<SecurityEventsService, 'record'>,
 ) {
   const appUrl = env.APP_URL.replace(/\/$/, '');
   const throttle = new SignInThrottle(prisma, env.RATE_LIMIT_ENABLED);
@@ -201,7 +207,23 @@ export function createAuth(
           if (!email) return;
           if (isAPIError(returned)) {
             if (returned.statusCode === 401) {
-              await throttle.recordFailure(email, clientIp(ctx.headers));
+              const ip = clientIp(ctx.headers);
+              const requestId =
+                ctx.headers?.get(REQUEST_ID_HEADER) ?? undefined;
+              const locked = await throttle.recordFailure(email, ip);
+              security.record(SECURITY_EVENTS.signInFailed, {
+                email,
+                ip,
+                requestId,
+              });
+              if (locked > 0) {
+                security.record(SECURITY_EVENTS.signInLocked, {
+                  email,
+                  ip,
+                  requestId,
+                  metadata: { lockSeconds: locked },
+                });
+              }
             }
             return;
           }
@@ -209,6 +231,22 @@ export function createAuth(
           await throttle.recordSuccess(email);
           const password = field(ctx.body, 'password');
           if (password) await upgradeHash(prisma, email, password);
+          return;
+        }
+        if (
+          (ctx.path === '/two-factor/verify-totp' ||
+            ctx.path === '/two-factor/verify-backup-code') &&
+          isAPIError(returned)
+        ) {
+          security.record(SECURITY_EVENTS.twoFactorFailed, {
+            actorUserId: ctx.context.session?.user.id ?? null,
+            ip: clientIp(ctx.headers),
+            requestId: ctx.headers?.get(REQUEST_ID_HEADER) ?? undefined,
+            metadata: {
+              method: ctx.path.endsWith('backup-code') ? 'backup_code' : 'totp',
+              status: returned.statusCode,
+            },
+          });
           return;
         }
         if (ctx.path === '/change-password' && !isAPIError(returned)) {

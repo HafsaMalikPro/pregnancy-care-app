@@ -3,6 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import type { Env } from '../config/env.js';
 import { PrismaService } from '../database/prisma.service.js';
 import { EMAIL_SENDER, type EmailSender } from '../email/email-sender.js';
+import { SecurityEventsService } from '../audit/security-events.service.js';
 import { type Auth, createAuth } from './better-auth.js';
 
 export type { Auth } from './better-auth.js';
@@ -12,11 +13,12 @@ export const AUTH = Symbol('AUTH');
 
 export const authProvider: Provider = {
   provide: AUTH,
-  inject: [PrismaService, ConfigService, EMAIL_SENDER],
+  inject: [PrismaService, ConfigService, EMAIL_SENDER, SecurityEventsService],
   useFactory: (
     prisma: PrismaService,
     config: ConfigService<Env, true>,
     email: EmailSender,
+    security: SecurityEventsService,
   ): Auth =>
     createAuth(
       prisma,
@@ -33,5 +35,6 @@ export const authProvider: Provider = {
         }),
       },
       email,
+      security,
     ),
 };

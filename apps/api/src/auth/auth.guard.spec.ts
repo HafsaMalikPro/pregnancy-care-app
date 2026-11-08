@@ -1,3 +1,4 @@
+import type { SecurityEventsService } from '../audit/security-events.service.js';
 import {
   type ExecutionContext,
   ForbiddenException,
@@ -50,9 +51,17 @@ function setup(opts: {
     getClass: () => null,
     switchToHttp: () => ({ getRequest: () => req }),
   } as unknown as ExecutionContext;
-  const guard = new AuthGuard(reflector, prisma, config, auth);
+  const security = { record: vi.fn() };
+  const guard = new AuthGuard(
+    reflector,
+    prisma,
+    config,
+    auth,
+    security as unknown as SecurityEventsService,
+  );
   return {
     run: () => guard.canActivate(ctx),
+    security,
     req,
     getSession,
     findUnique,

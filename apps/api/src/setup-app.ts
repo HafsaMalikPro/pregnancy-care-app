@@ -9,6 +9,10 @@ import { clientIpMiddleware } from './auth/client-ip.js';
 import { jsonOnlyMiddleware } from './common/middleware/content-type.middleware.js';
 import { createAppLogger } from './common/logging/redacting-logger.js';
 import { csrfMiddleware } from './common/middleware/csrf.middleware.js';
+import {
+  SECURITY_EVENTS,
+  SecurityEventsService,
+} from './audit/security-events.service.js';
 import { applySecurityHeaders } from './common/middleware/security-headers.js';
 import { requestIdMiddleware } from './common/middleware/request-id.middleware.js';
 import { createValidationPipe } from './common/validation.js';
@@ -34,7 +38,39 @@ export async function setupApp(app: INestApplication): Promise<void> {
     credentials: true,
     exposedHeaders: ['x-request-id', 'set-auth-token'],
   });
-  app.use(csrfMiddleware(config.get('CORS_ORIGINS', { infer: true })));
+  const security = app.get(SecurityEventsService);
+  // Every 429 (Nest throttler, Better Auth limiter, sign-in lockout) becomes one security
+  // event per client and route per minute.
+  app.use((req: Request, res: Response, next: NextFunction) => {
+    res.on('finish', () => {
+      if (res.statusCode !== 429) return;
+      const pattern = req.route?.path as string | undefined;
+      // Nest routes report their pattern; the Better Auth catch-all reports the real path.
+      const route =
+        pattern && !pattern.includes('*')
+          ? pattern
+          : req.path.replace(/[0-9a-f-]{36}/g, ':id');
+      security.record(SECURITY_EVENTS.rateLimited, {
+        ip: req.ip ?? null,
+        requestId: req.requestId,
+        metadata: { route: `${req.method} ${route}` },
+        dedupeKey: `${req.ip}|${req.method} ${route}`,
+      });
+    });
+    next();
+  });
+  app.use(
+    csrfMiddleware(config.get('CORS_ORIGINS', { infer: true }), (req) =>
+      security.record(SECURITY_EVENTS.csrfRejected, {
+        ip: req.ip ?? null,
+        requestId: req.requestId,
+        metadata: {
+          route: `${req.method} ${req.path.replace(/[0-9a-f-]{36}/g, ':id')}`,
+        },
+        dedupeKey: `${req.ip}|${req.path}`,
+      }),
+    ),
+  );
   app.use(jsonOnlyMiddleware);
   // Parameterised Better Auth routes that disabledPaths cannot match exactly.
   express.use(

@@ -4,6 +4,22 @@
 
 Threat model: `docs/THREAT_MODEL.md`. Controls and tests: `docs/SECURITY_CHECKLIST.md`.
 
+### Hardening phase 8 — Logging, monitoring and audit
+
+- Security events in `audit_events`, queryable by administrators (`?action=security.…`):
+  - `sign_in_failed`, `sign_in_locked`, `two_factor_failed`;
+  - `rate_limited` (every 429, from any source);
+  - `staff_access_denied` (with reason), `csrf_rejected`.
+  - Emails and IPs are stored only as keyed pseudonyms.
+  - Noisy events are de-duplicated per client and route per minute.
+  - Writes never fail the request.
+- The request id is also set on the incoming request headers, so Better Auth events carry it.
+- New `docs/MONITORING.md`: the events, the alerts that should page someone (with
+  thresholds), example queries, and what the health endpoints expose.
+- TOTP test helpers moved to `test/support/totp.ts`. New tests check each event, pseudonyms
+  only, admin query, de-duplicated 429 events, request ids on all responses and in error
+  bodies, and that health endpoints reveal status only.
+
 ### Hardening phase 7 — Dependencies, supply chain and secrets
 
 - Removed `@nestjs/mau` (and the unused `deploy` script). Its `undici` and `tmp` were all 8
