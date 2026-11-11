@@ -39,7 +39,8 @@ export const useMotionPrefs = () => useContext(MotionPrefsContext);
 /** True when motion should be reduced (OS setting or profile setting). */
 export function useReduced(): boolean {
   const os = useReducedMotion();
-  return Boolean(os) || useContext(MotionPrefsContext).profileReduced;
+  const { profileReduced } = useContext(MotionPrefsContext);
+  return Boolean(os) || profileReduced;
 }
 
 /** Fades and lifts the page content in on every route change. */
@@ -103,19 +104,17 @@ export function CountUp({ value, className, suffix = "" }: { value: number; clas
   const ref = useRef<HTMLSpanElement>(null);
   const inView = useInView(ref, { once: true });
   const reduced = useReduced();
-  const [shown, setShown] = useState(reduced ? value : 0);
+  const [counted, setCounted] = useState(0);
+  // Reduced motion shows the final value straight away; there is nothing to animate.
+  const shown = reduced ? value : counted;
 
   useEffect(() => {
-    if (!inView) return;
-    if (reduced) {
-      setShown(value);
-      return;
-    }
+    if (!inView || reduced) return;
     let frame = 0;
     const start = performance.now();
     const tick = (now: number) => {
       const t = (now - start) / (DURATION.count * 1000);
-      setShown(Math.round(easeOutCubic(t) * value));
+      setCounted(Math.round(easeOutCubic(t) * value));
       if (t < 1) frame = requestAnimationFrame(tick);
     };
     frame = requestAnimationFrame(tick);

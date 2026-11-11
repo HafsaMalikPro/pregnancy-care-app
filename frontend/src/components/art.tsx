@@ -91,6 +91,91 @@ export function TopicArt({
   );
 }
 
+/*
+ * Article photos. eating, exercise, birth and symptoms are from Unsplash (Unsplash License:
+ * bM0Bbefyiw4, t1NEMSm1rgI, -G2iJF_aUws, OyvZbtXJRlA). calm, bump, heart, relax and
+ * whiteshirt were supplied by the site owner, who is responsible for their licence.
+ * `focus` is the object-position used when the photo is cropped to a card.
+ */
+type Photo = { src: string; width: number; height: number; alt: string; focus?: string };
+const PHOTOS = {
+  eating: { src: "/assets/articles/photo-eating.jpg", width: 720, height: 360, alt: "A woman eating a bowl of salad" },
+  exercise: { src: "/assets/articles/photo-exercise.jpg", width: 720, height: 360, alt: "A woman stretching on a mat" },
+  birth: { src: "/assets/articles/photo-birth.jpg", width: 720, height: 360, alt: "A pregnant woman standing by a cot in a nursery" },
+  symptoms: { src: "/assets/articles/photo-symptoms.jpg", width: 720, height: 360, alt: "A pregnant woman resting on a sofa" },
+  calm: { src: "/assets/articles/photo-calm.jpg", width: 576, height: 324, alt: "A pregnant woman by a window with her hands on her bump" },
+  bump: { src: "/assets/articles/photo-bump.jpg", width: 452, height: 678, alt: "A pregnant woman in a white t-shirt holding her bump", focus: "50% 38%" },
+  heart: { src: "/assets/articles/photo-heart.jpg", width: 700, height: 545, alt: "Hands making a heart shape on a pregnant bump" },
+  relax: { src: "/assets/articles/photo-relax.jpg", width: 639, height: 860, alt: "A pregnant woman sitting on a bed, smiling down at her bump", focus: "60% 35%" },
+  whiteshirt: { src: "/assets/articles/photo-whiteshirt.jpg", width: 1000, height: 667, alt: "A pregnant woman in a white top and grey cardigan holding her bump" },
+  fruit: { src: "/assets/photos/fruit-bowl.jpg", width: 720, height: 720, alt: "A bowl of berries and grapes" },
+  walking: { src: "/assets/photos/walking.jpg", width: 720, height: 480, alt: "A pregnant woman walking in a park" },
+  yoga: { src: "/assets/photos/yoga.jpg", width: 800, height: 640, alt: "A woman sitting cross-legged on a yoga mat" },
+  teddy: { src: "/assets/photos/newborn-teddy.jpg", width: 900, height: 760, alt: "A newborn baby asleep beside a teddy bear" },
+} as const satisfies Record<string, Photo>;
+type PhotoKey = keyof typeof PHOTOS;
+
+/** Each published article gets its own photo. Listed in the order the API returns them. */
+const ARTICLE_PHOTOS: Record<string, PhotoKey> = {
+  "staying-active-trimester-by-trimester": "exercise",
+  "eating-well-in-pregnancy": "eating",
+  "warning-signs-after-birth": "whiteshirt",
+  "postnatal-mental-health": "symptoms",
+  "recovering-after-birth": "relax",
+  "formula-feeding-safely": "heart",
+  "breastfeeding-getting-started": "birth",
+  "bathing-your-newborn": "bump",
+  "safe-sleep-for-babies": "teddy",
+  "newborn-first-week": "calm",
+  "first-trimester-tests": "whiteshirt",
+  "folic-acid-why-it-matters": "fruit",
+  "morning-sickness-relief": "relax",
+  "safe-exercise-pregnancy": "walking",
+  "partner-support-pregnancy": "yoga",
+};
+
+/** Articles not listed above (published later) fall back to a photo for their topic. */
+const TOPIC_PHOTOS: Record<Topic, PhotoKey> = {
+  nutrition: "eating",
+  movement: "exercise",
+  sleep: "calm",
+  wellbeing: "symptoms",
+  baby: "heart",
+  care: "birth",
+};
+
+/** The photo for an article (by slug) or a topic. Crop it with object-cover and an aspect ratio. */
+export function TopicPhoto({
+  topic,
+  slug,
+  className,
+  sizes = "(min-width: 1024px) 25vw, (min-width: 640px) 50vw, 100vw",
+  priority = false,
+  decorative = false,
+}: {
+  topic: Topic;
+  slug?: string;
+  className?: string;
+  sizes?: string;
+  priority?: boolean;
+  /** Empty alt text, for when the article title right next to it says the same. */
+  decorative?: boolean;
+}) {
+  const p: Photo = PHOTOS[(slug && ARTICLE_PHOTOS[slug]) || TOPIC_PHOTOS[topic]];
+  return (
+    <Image
+      src={p.src}
+      alt={decorative ? "" : p.alt}
+      width={p.width}
+      height={p.height}
+      sizes={sizes}
+      priority={priority}
+      className={className}
+      style={p.focus ? { objectPosition: p.focus } : undefined}
+    />
+  );
+}
+
 export function MotherArt({ className, priority }: { className?: string; priority?: boolean }) {
   return (
     <Image

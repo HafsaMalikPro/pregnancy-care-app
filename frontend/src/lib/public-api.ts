@@ -126,3 +126,23 @@ export async function getArticlesIn(categories: string[]): Promise<ArticleSummar
   const seen = new Set<string>();
   return pages.flatMap((p) => p?.items ?? []).filter((a) => !seen.has(a.slug) && (seen.add(a.slug), true));
 }
+
+/** How much published content there is, for the home page. A count is null if unavailable. */
+export interface SiteStats {
+  weekGuides: number | null;
+  articles: number | null;
+  recipes: number | null;
+  activities: number | null;
+}
+
+export async function getSiteStats(): Promise<SiteStats> {
+  const total = async (path: string) =>
+    (await optional(get<Page<unknown>>(`${path}?limit=1`)))?.page.total ?? null;
+  const [weekGuides, articles, recipes, activities] = await Promise.all([
+    optional(get<unknown[]>("/v1/week-guides")).then((list) => list?.length ?? null),
+    total("/v1/articles"),
+    total("/v1/recipes"),
+    total("/v1/activities"),
+  ]);
+  return { weekGuides, articles, recipes, activities };
+}

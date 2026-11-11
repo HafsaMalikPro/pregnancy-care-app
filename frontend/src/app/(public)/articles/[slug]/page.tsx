@@ -2,7 +2,7 @@ import { Clock } from "lucide-react";
 import type { Metadata } from "next";
 import { Container } from "@/components/shell";
 import { notFound } from "next/navigation";
-import { TopicArt, topicFor } from "@/components/art";
+import { TopicPhoto, topicFor } from "@/components/art";
 import { Markdown, readingMinutes } from "@/components/markdown";
 import { Badge, Breadcrumbs } from "@/components/ui";
 import { ReviewFooter } from "@/components/week-guide";
@@ -42,10 +42,12 @@ export default async function ArticlePage({ params }: PageProps<"/articles/[slug
     <Container>
       <Breadcrumbs items={[{ href: "/articles", label: "Learn" }, { label: a.title }]} />
       <article className="mx-auto max-w-3xl">
-        <TopicArt
+        <TopicPhoto
           topic={topicFor(`${a.slug} ${a.title}`)}
+          slug={a.slug}
           className="aspect-[2/1] w-full rounded-[2rem] object-cover shadow-soft sm:aspect-[5/2]"
           sizes="(min-width: 768px) 48rem, 100vw"
+          priority
         />
         <div className="mt-8 flex flex-wrap items-center gap-2 text-sm text-muted">
           {a.premium && <Badge tone="warn">Premium</Badge>}

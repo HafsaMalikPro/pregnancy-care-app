@@ -15,7 +15,9 @@ import {
   Menu,
   Milk,
   Settings,
+  ShieldCheck,
   ShieldUser,
+  Stethoscope,
   UserRound,
   Utensils,
   X,
@@ -25,6 +27,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { createContext, useContext, useEffect, useId, useRef, useState } from "react";
+import { SOCIAL_LINKS } from "@/lib/site";
 import { useSession } from "./session-provider";
 import { Alert, ButtonLink, Loading, cx } from "./ui";
 
@@ -140,8 +143,9 @@ export function Container({
   const inApp = useContext(InAppFrame);
   if (inApp) return <div className={className}>{children}</div>;
   return (
-    <div className={cx("mx-auto px-4 py-10 sm:py-14", wide ? "max-w-6xl" : "max-w-5xl", className)}>
-      {children}
+    <div className={cx("w-full px-4 sm:px-8 lg:px-12 xl:px-16 py-10 sm:py-14", className)}>
+      {/* Pages run full width; text-only pages (wide={false}) keep a readable column. */}
+      {wide ? children : <div className="max-w-4xl">{children}</div>}
     </div>
   );
 }
@@ -151,11 +155,15 @@ const isActive = (pathname: string, item: Pick<NavItem, "href" | "also">) =>
     (p) => pathname === p || pathname.startsWith(`${p}/`),
   );
 
-export function Logo({ href = "/" }: { href?: string }) {
+export function Logo({ href = "/", tone = "default" }: { href?: string; tone?: "default" | "light" }) {
+  const light = tone === "light";
   return (
     <Link
       href={href}
-      className="flex shrink-0 items-center gap-2 rounded-full font-sans text-lg font-extrabold tracking-tight text-heading sm:gap-2.5 sm:text-xl"
+      className={cx(
+        "flex shrink-0 items-center gap-2 rounded-full font-sans text-lg font-extrabold tracking-tight sm:gap-2.5 sm:text-xl",
+        light ? "text-white" : "text-heading",
+      )}
     >
       <Image
         src="/assets/brand/logo-mark.png"
@@ -166,7 +174,12 @@ export function Logo({ href = "/" }: { href?: string }) {
       />
       <span className="whitespace-nowrap leading-none">
         Pregnancy Care
-        <span className="mt-1 block font-sans text-[0.68rem] font-semibold tracking-normal text-clay-strong max-sm:hidden">
+        <span
+          className={cx(
+            "mt-1 block font-sans text-[0.68rem] font-semibold tracking-normal max-sm:hidden",
+            light ? "text-white/75" : "text-clay-strong",
+          )}
+        >
           Healthy Mom ♥ Happy Baby
         </span>
       </span>
@@ -227,7 +240,7 @@ export function PublicHeader() {
   return (
     <header className="sticky top-0 z-30 border-b border-line/70 bg-paper/90 backdrop-blur">
       <SkipLink />
-      <div className="mx-auto flex h-18 max-w-6xl items-center justify-between gap-3 px-4">
+      <div className="flex h-18 w-full items-center justify-between gap-3 px-4 sm:px-8 lg:px-12 xl:px-16">
         <Logo />
         <nav aria-label="Main" className="hidden items-center gap-1 xl:flex">
           {PUBLIC_NAV.map((group) =>
@@ -468,7 +481,7 @@ function AppFrame({ children }: { children: React.ReactNode }) {
 
         {me?.kind === "anonymous" && (
           <div className="border-b border-line bg-plum-soft text-sm text-plum">
-            <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-2 px-4 py-2 sm:px-8">
+            <div className="flex w-full flex-wrap items-center justify-between gap-2 px-4 sm:px-8 lg:px-12 xl:px-16 py-2">
               <span>Guest mode: your data stays on this browser only.</span>
               <Link href="/signup" className="font-semibold underline">
                 Create an account to keep it
@@ -477,7 +490,7 @@ function AppFrame({ children }: { children: React.ReactNode }) {
           </div>
         )}
 
-        <main id="main" className="mx-auto w-full max-w-6xl flex-1 px-4 pb-28 pt-6 sm:px-8 sm:pt-8 lg:pb-12 lg:pt-8">
+        <main id="main" className="w-full flex-1 px-4 sm:px-8 lg:px-12 xl:px-16 pb-28 pt-6 sm:pt-8 lg:pb-12 lg:pt-8">
           {linkError && (
             <div className="mb-6">
               <Alert tone="warn">{linkError}</Alert>
@@ -579,7 +592,7 @@ function SkipLink() {
 
 function Disclaimer() {
   return (
-    <p className="mx-auto max-w-6xl px-8 pb-8 text-xs leading-relaxed text-muted">
+    <p className="w-full px-4 sm:px-8 lg:px-12 xl:px-16 pb-8 text-xs leading-relaxed text-muted">
       Pregnancy Care offers general information, not medical advice, diagnosis or treatment.
       Always follow your midwife or doctor. If you think you or your baby may be in danger,
       call your local emergency number now.{" "}
@@ -594,66 +607,152 @@ function Disclaimer() {
   );
 }
 
+const FOOTER_GROUPS = [
+  {
+    title: "Your pregnancy",
+    links: [
+      { href: "/journey", label: "Your 9-month journey" },
+      { href: "/weeks", label: "Week by week" },
+      { href: "/nutrition", label: "Nutrition" },
+      { href: "/exercise", label: "Exercise" },
+      { href: "/birth-and-postpartum", label: "Birth and after" },
+      { href: "/baby-care", label: "Baby care" },
+    ],
+  },
+  {
+    title: "Help and support",
+    links: [
+      { href: "/#when-to-get-help", label: "When to get help" },
+      { href: "/articles", label: "Articles" },
+      { href: "/signup", label: "Create a free account" },
+      { href: "/about", label: "About us" },
+      { href: "/contact", label: "Contact us" },
+    ],
+  },
+] as const;
+
+const LEGAL_LINKS = [
+  { href: "/about", label: "About us" },
+  { href: "/contact", label: "Contact us" },
+  { href: "/privacy", label: "Privacy policy" },
+  { href: "/terms", label: "Terms of use" },
+  { href: "/sitemap.xml", label: "Sitemap" },
+] as const;
+
+/** Statements about how the site works (not third-party certifications). */
+const FOOTER_BADGES = [
+  { icon: Stethoscope, title: "Clinically reviewed", text: "Every article is checked before it's published" },
+  { icon: ShieldCheck, title: "Private by design", text: "Download or delete your data at any time" },
+] as const;
+
+/** Deep berry footer, the same in both themes: brand and social links, link groups, badges, legal bar. */
 export function SiteFooter() {
-  const links = [
-    { href: "/", label: "Home" },
-    { href: "/about", label: "About" },
-    { href: "/privacy", label: "Privacy" },
-    { href: "/terms", label: "Terms" },
-    { href: "/contact", label: "Contact" },
-  ];
   return (
     <footer className="relative mt-auto">
-      <Sprig className="absolute -top-14 left-6 hidden sm:block" />
-      <Sprig className="absolute -top-14 right-6 hidden -scale-x-100 sm:block" />
-      <div className="border-t border-line/70 bg-card/70">
-        <div className="mx-auto flex max-w-6xl flex-col items-center gap-6 px-4 py-8 text-center md:flex-row md:items-center md:justify-between md:text-left">
-          <Logo />
-          <div className="flex flex-col items-center gap-3">
-            <nav aria-label="Footer">
-              <ul className="flex flex-wrap justify-center gap-x-6 gap-y-2 text-sm">
-                {links.map((l) => (
+      <div className="bg-[#3f1835] text-white">
+        <div className="grid w-full gap-10 px-4 py-12 sm:px-8 md:grid-cols-2 lg:grid-cols-[1.3fr_1fr_1fr_1.2fr] lg:px-12 xl:px-16">
+          <div>
+            <Logo tone="light" />
+            <p className="mt-4 max-w-xs text-sm leading-relaxed text-white/80">
+              Calm, clinician-reviewed guidance for every week of your pregnancy and your
+              baby&apos;s first days.
+            </p>
+            {SOCIAL_LINKS.length > 0 && (
+              <ul className="mt-6 flex flex-wrap gap-3" aria-label="Follow us">
+                {SOCIAL_LINKS.map((s) => (
+                  <li key={s.network}>
+                    <a
+                      href={s.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      aria-label={`${s.label} (opens in a new tab)`}
+                      className="grid size-12 place-items-center rounded-full border-2 border-white/80 text-white transition hover:-translate-y-0.5 hover:border-white hover:bg-white hover:text-[#3f1835]"
+                    >
+                      <SocialIcon network={s.network} />
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+
+          {FOOTER_GROUPS.map((g) => (
+            <nav key={g.title} aria-label={g.title}>
+              <h2 className="font-sans text-sm font-bold text-white">{g.title}</h2>
+              <ul className="mt-4 grid gap-2.5 text-sm">
+                {g.links.map((l) => (
                   <li key={l.label}>
-                    <Link href={l.href} className="text-muted hover:text-clay-strong hover:underline">
+                    <Link href={l.href} className="text-white/80 transition hover:text-white hover:underline">
                       {l.label}
                     </Link>
                   </li>
                 ))}
               </ul>
             </nav>
-            <p className="text-xs text-muted">
-              © {new Date().getFullYear()} Pregnancy Care. All rights reserved.
+          ))}
+
+          <ul className="grid content-start gap-3">
+            {FOOTER_BADGES.map(({ icon: Icon, title, text }) => (
+              <li key={title} className="flex items-start gap-3 rounded-2xl border border-white/30 p-4">
+                <Icon className="mt-0.5 size-6 shrink-0 text-white" aria-hidden />
+                <span>
+                  <span className="block text-sm font-bold">{title}</span>
+                  <span className="block text-xs leading-relaxed text-white/75">{text}</span>
+                </span>
+              </li>
+            ))}
+          </ul>
+        </div>
+
+        <div className="bg-[#33122b]">
+          <div className="w-full px-4 py-6 sm:px-8 lg:px-12 xl:px-16">
+            <nav aria-label="Legal">
+              <ul className="flex flex-wrap gap-x-6 gap-y-2 text-sm">
+                {LEGAL_LINKS.map((l) => (
+                  <li key={l.label}>
+                    <Link href={l.href} className="text-white/90 transition hover:text-white hover:underline">
+                      {l.label}
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </nav>
+            <p className="mt-4 text-sm leading-relaxed text-white/75">
+              © {new Date().getFullYear()} Pregnancy Care. Pregnancy Care offers general information,
+              not medical advice, diagnosis or treatment. Always follow your midwife or doctor. If you
+              think you or your baby may be in danger, call your local emergency number now.
             </p>
           </div>
-          <Link
-            href="/contact"
-            aria-label="Contact us"
-            className="grid size-10 place-items-center rounded-full bg-clay-soft text-clay-strong transition hover:bg-clay hover:text-white"
-          >
-            <Heart className="size-4" aria-hidden />
-          </Link>
-        </div>
-        <div className="border-t border-line/70">
-          <p className="mx-auto max-w-6xl px-4 py-4 text-center text-xs leading-relaxed text-muted">
-            Pregnancy Care offers general information, not medical advice, diagnosis or
-            treatment. Always follow your midwife or doctor. If you think you or your baby may
-            be in danger, call your local emergency number now.
-          </p>
         </div>
       </div>
     </footer>
   );
 }
 
-/** Small decorative leaf-and-bud sprig used above the footer. */
-function Sprig({ className }: { className?: string }) {
+/** Simplified social glyphs (24px box, filled with currentColor). */
+function SocialIcon({ network }: { network: (typeof SOCIAL_LINKS)[number]["network"] }) {
+  const paths: Record<typeof network, React.ReactNode> = {
+    facebook: <path d="M14 8h2.5V4.5H14C11.2 4.5 9.5 6.3 9.5 9v2H7v3.5h2.5V21H13v-6.5h2.6l.6-3.5H13V9.3c0-.8.4-1.3 1-1.3z" />,
+    instagram: (
+      <>
+        <path d="M7.5 3h9A4.5 4.5 0 0 1 21 7.5v9a4.5 4.5 0 0 1-4.5 4.5h-9A4.5 4.5 0 0 1 3 16.5v-9A4.5 4.5 0 0 1 7.5 3zm0 2A2.5 2.5 0 0 0 5 7.5v9A2.5 2.5 0 0 0 7.5 19h9a2.5 2.5 0 0 0 2.5-2.5v-9A2.5 2.5 0 0 0 16.5 5z" />
+        <path d="M12 7.5a4.5 4.5 0 1 1 0 9 4.5 4.5 0 0 1 0-9zm0 2a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5z" />
+        <circle cx="17.2" cy="6.8" r="1.2" />
+      </>
+    ),
+    tiktok: <path d="M15.5 3c.3 2.3 1.8 3.8 4.5 4v3.2c-1.6 0-3.1-.5-4.4-1.4v6.4A5.8 5.8 0 1 1 9.8 9.4v3.3a2.6 2.6 0 1 0 2.5 2.6V3z" />,
+    youtube: <path d="M21.6 7.2a2.6 2.6 0 0 0-1.8-1.8C18.2 5 12 5 12 5s-6.2 0-7.8.4A2.6 2.6 0 0 0 2.4 7.2C2 8.8 2 12 2 12s0 3.2.4 4.8a2.6 2.6 0 0 0 1.8 1.8c1.6.4 7.8.4 7.8.4s6.2 0 7.8-.4a2.6 2.6 0 0 0 1.8-1.8c.4-1.6.4-4.8.4-4.8s0-3.2-.4-4.8zM10 15.2V8.8l5.2 3.2z" />,
+    linkedin: (
+      <>
+        <rect x="3.5" y="9" width="3.5" height="11.5" rx=".5" />
+        <circle cx="5.25" cy="5.25" r="2" />
+        <path d="M10 9h3.3v1.6c.6-1 1.8-1.9 3.6-1.9 3.2 0 3.8 2.1 3.8 4.8v7h-3.5v-6.2c0-1.4-.3-2.6-1.9-2.6s-1.9 1.2-1.9 2.6v6.2H10z" />
+      </>
+    ),
+  };
   return (
-    <svg aria-hidden viewBox="0 0 60 60" className={cx("size-14", className)}>
-      <path d="M30 58C30 40 28 24 22 10" fill="none" stroke="#80a987" strokeWidth="2" strokeLinecap="round" />
-      <path d="M29 44c-8-2-14-8-15-15 8 1 14 7 15 15z" fill="#a9c8ad" />
-      <path d="M28 32c6-4 13-5 18-2-4 5-11 6-18 2z" fill="#a9c8ad" />
-      <path d="M22 10c-3-5-1-9 3-9 2 4 1 8-3 9z" fill="#e88aa0" />
-      <path d="M40 30c-1-6 2-10 6-10 1 5-2 9-6 10z" fill="#f2a9b9" />
+    <svg viewBox="0 0 24 24" aria-hidden className="size-5" fill="currentColor">
+      {paths[network]}
     </svg>
   );
 }

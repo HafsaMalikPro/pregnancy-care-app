@@ -1,13 +1,12 @@
-import { Apple, ArrowRight, Baby, CircleCheck, Dumbbell, HeartHandshake, PlayCircle } from "lucide-react";
+import { ArrowRight, PlayCircle } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { WombArt } from "@/components/art";
 import { ArticleStrip } from "@/components/article-strip";
-import { Heart, LeafBranch } from "@/components/decor";
+import { CommonQuestions, SupportBand, TopicHub, TrustBand, UrgentHelp } from "@/components/home-sections";
 import { Shell } from "@/components/shell";
 import { ButtonLink } from "@/components/ui";
-import { cx } from "@/lib/cx";
-import { getArticles, optional } from "@/lib/public-api";
+import { getArticles, getSiteStats, optional } from "@/lib/public-api";
 
 const TRIMESTERS = [
   { name: "1st Trimester", weeks: "Weeks 1–13", stage: "Foundation", art: 10 },
@@ -15,26 +14,17 @@ const TRIMESTERS = [
   { name: "3rd Trimester", weeks: "Weeks 28–42", stage: "Preparation", art: 34 },
 ] as const;
 
-/** Tile colours taken from the design mock-up. */
-const TILES = [
-  { icon: Apple, tone: "bg-blush text-[#e0383e]", title: "Nutrition", text: "Eating well, week by week", href: "/nutrition" },
-  { icon: Dumbbell, tone: "bg-[#ece4fb] text-[#7a52d6]", title: "Exercise", text: "Gentle, safe movement", href: "/exercise" },
-  { icon: Baby, tone: "bg-[#fde6d3] text-[#e8792b]", title: "Baby Development", text: "Week by week", href: "/weeks" },
-  { icon: HeartHandshake, tone: "bg-blush text-[#e0457a]", title: "Baby Care", text: "Getting ready", href: "/baby-care" },
-] as const;
-
-const TRUST = ["Clinically reviewed", "Privacy first", "Built around your due date"];
-
-const card = "rounded-3xl border border-white/80 bg-card shadow-soft";
 
 export default async function HomePage() {
-  const articles = await optional(getArticles(4));
+  const [articles, stats] = await Promise.all([optional(getArticles(4)), getSiteStats()]);
 
   return (
     <Shell variant="public">
       {/* Hero */}
       <section className="relative overflow-hidden bg-linear-to-r from-paper via-paper-2 to-blush">
-        <div className="mx-auto grid max-w-6xl items-end gap-2 px-4 pt-8 sm:pt-12 lg:min-h-136 lg:grid-cols-[1.05fr_1fr]">
+        {/* Fade the hero's blush into the page so it has no hard bottom edge. */}
+        <div aria-hidden className="pointer-events-none absolute inset-x-0 bottom-0 h-28 bg-linear-to-b from-transparent to-paper" />
+        <div className="grid w-full items-center gap-6 px-4 sm:px-8 lg:px-12 xl:px-16 pt-8 pb-14 sm:pt-12 lg:min-h-136 lg:grid-cols-[1fr_1.1fr]">
           <div className="relative z-10 self-center py-4 lg:pb-16">
             <h1 className="font-sans text-[2.25rem] font-extrabold leading-[1.12] tracking-tight sm:text-5xl lg:text-[3.35rem]">
               Your Complete Pregnancy Journey, From First Week to Baby&apos;s First Days.
@@ -60,32 +50,23 @@ export default async function HomePage() {
             </div>
           </div>
 
-          <div className="relative mx-auto w-full max-w-md lg:mx-0 lg:max-w-none">
-            {/* Blush shapes, hearts and leaves around the cut-out, as in the design */}
-            <div aria-hidden className="absolute inset-0">
-              <span className="absolute left-[10%] top-[30%] size-[46%] rounded-full bg-blush" />
-              <span className="absolute right-[4%] top-[8%] size-[38%] rounded-full bg-blush" />
-              <span className="absolute bottom-0 left-[14%] h-[55%] w-[74%] rounded-t-[999px] bg-blush" />
-            </div>
-            <Heart className="absolute left-[6%] top-[16%] size-6 text-[#f08aa5]" />
-            <Heart className="absolute right-[8%] top-[6%] size-8 text-[#f5a3b8]" />
-            <Heart className="absolute right-[2%] top-[40%] size-4 text-[#f08aa5]" />
-            <LeafBranch className="absolute -left-4 bottom-0 h-56 w-40" />
-            <LeafBranch flip className="absolute -right-6 bottom-6 h-64 w-44" />
+          <div className="relative mx-auto w-full max-w-xl lg:mx-0 lg:max-w-none">
+            {/* Watercolour art with its own hearts and leaves. Multiply blends its paper into the
+                hero's blush; the mask softens the edges so there is no visible box. */}
             <Image
-              src="/assets/illustrations/mother-cutout.png"
-              alt="Illustration of a pregnant woman holding her bump, surrounded by leaves and flowers"
-              width={1179}
-              height={1187}
+              src="/assets/illustrations/mother-watercolor.png"
+              alt="Watercolour illustration of a smiling pregnant woman holding her bump, with hearts and leaves"
+              width={1106}
+              height={960}
               priority
-              sizes="(min-width: 1024px) 34rem, 28rem"
-              className="relative h-auto w-full"
+              sizes="(min-width: 1024px) 50vw, 90vw"
+              className="h-auto w-full mix-blend-multiply [mask-image:radial-gradient(ellipse_50%_50%_at_50%_50%,black_72%,transparent_100%)]"
             />
           </div>
         </div>
       </section>
 
-      <div className="mx-auto max-w-6xl space-y-5 px-4 pb-16">
+      <div className="w-full space-y-10 px-4 sm:px-8 lg:px-12 xl:px-16 pb-16">
         {/* Your 9-month journey at a glance */}
         <section
           aria-labelledby="glance-heading"
@@ -116,49 +97,12 @@ export default async function HomePage() {
           </ol>
         </section>
 
-        {/* Topic tiles */}
-        <section id="features" aria-label="Explore by topic" className="scroll-mt-24">
-          <ul className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-            {TILES.map(({ icon: Icon, tone, title, text, href }) => (
-              <li key={title}>
-                <Link
-                  href={href}
-                  className={cx(
-                    card,
-                    "flex h-full flex-col items-center px-4 py-6 text-center transition hover:-translate-y-0.5 hover:border-clay/30",
-                  )}
-                >
-                  <span aria-hidden className={cx("grid size-14 place-items-center rounded-full", tone)}>
-                    <Icon className="size-7" strokeWidth={2.2} />
-                  </span>
-                  <span className="mt-3 text-base font-bold text-slate">{title}</span>
-                  <span className="mt-0.5 text-sm text-muted">{text}</span>
-                </Link>
-              </li>
-            ))}
-          </ul>
-        </section>
-
-        {/* Trust strip */}
-        <section
-          aria-labelledby="trust-heading"
-          className="relative overflow-hidden rounded-3xl bg-card/70 px-5 py-6 text-center shadow-soft"
-        >
-          <LeafBranch className="absolute -bottom-6 -left-3 h-32 w-24 opacity-90" />
-          <LeafBranch flip className="absolute -bottom-6 -right-3 h-32 w-24 opacity-90" />
-          <h2 id="trust-heading" className="font-sans text-base font-bold sm:text-lg">
-            Trusted Guidance for a Healthy Pregnancy
-          </h2>
-          <ul className="mt-3 flex flex-wrap justify-center gap-x-6 gap-y-2 text-sm text-muted">
-            {TRUST.map((t) => (
-              <li key={t} className="flex items-center gap-1.5">
-                <CircleCheck className="size-4 text-sage" aria-hidden /> {t}
-              </li>
-            ))}
-          </ul>
-        </section>
-
+        <TopicHub />
+        <TrustBand stats={stats} />
         <ArticleStrip articles={articles?.items ?? []} />
+        <UrgentHelp />
+        <CommonQuestions />
+        <SupportBand />
       </div>
     </Shell>
   );

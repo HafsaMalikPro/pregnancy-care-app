@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { TopicArt, topicFor } from "@/components/art";
+import { TopicPhoto, topicFor } from "@/components/art";
 import { Badge } from "@/components/ui";
 import { cx } from "@/lib/cx";
 import { formatDate } from "@/lib/dates";
@@ -22,9 +22,11 @@ export function ArticleCard({
         featured ? "flex-col md:flex-row" : "flex-col",
       )}
     >
-      <TopicArt
+      <TopicPhoto
         topic={topicFor(`${a.slug} ${a.title}`)}
-        className={cx("h-auto w-full object-cover", featured && "md:w-1/2")}
+        slug={a.slug}
+        className={cx("aspect-[16/10] w-full object-cover", featured && "md:aspect-auto md:w-1/2")}
+        sizes={featured ? "(min-width: 768px) 50vw, 100vw" : undefined}
       />
       <div className={cx("flex flex-1 flex-col p-5", featured && "md:justify-center md:p-8")}>
         {a.premium && (

@@ -171,7 +171,7 @@
   --radius-card: var(--radius-card);
   --radius-panel: var(--radius-panel);
 
-  --font-sans: var(--font-body);
+  --font-sans: var(--font-body), ui-sans-serif, system-ui, sans-serif;
   --font-display: var(--font-display);
 
   --ease-gentle: var(--ease-out);
@@ -206,7 +206,7 @@ select {
   h3 {
     color: var(--heading);
     text-wrap: balance;
-    font-family: var(--font-display), Georgia, serif;
+    font-family: var(--font-display), ui-sans-serif, system-ui, sans-serif;
     letter-spacing: -0.015em;
     line-height: 1.15;
   }
