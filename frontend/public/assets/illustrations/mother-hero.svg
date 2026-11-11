@@ -1,0 +1,76 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 480 560" role="img">
+  <defs>
+    <linearGradient id="dress" x1="0" y1="0" x2="0.4" y2="1">
+      <stop offset="0" stop-color="#EE97AB"/>
+      <stop offset="1" stop-color="#DC6F8B"/>
+    </linearGradient>
+    <radialGradient id="belly" cx="35%" cy="35%" r="70%">
+      <stop offset="0" stop-color="#F8B3C2"/>
+      <stop offset="1" stop-color="#E27C96" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="hair" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#7B4A3E"/>
+      <stop offset="1" stop-color="#5E3530"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="50%" cy="50%" r="50%">
+      <stop offset="0" stop-color="#FCE3E5"/>
+      <stop offset="1" stop-color="#FCE3E5" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+
+  <circle cx="250" cy="290" r="230" fill="url(#glow)"/>
+  <circle cx="250" cy="300" r="190" fill="#FCE3E5" opacity=".75"/>
+
+  <!-- Branches -->
+  <g fill="none" stroke="#80A987" stroke-width="3" stroke-linecap="round">
+    <path d="M70 545c10-70 40-120 80-150"/>
+    <path d="M420 545c-6-60-30-100-62-126"/>
+  </g>
+  <g fill="#80A987">
+    <ellipse cx="96" cy="470" rx="22" ry="9" transform="rotate(-50 96 470)"/>
+    <ellipse cx="122" cy="430" rx="20" ry="8" transform="rotate(-30 122 430)" opacity=".8"/>
+    <ellipse cx="80" cy="505" rx="20" ry="8" transform="rotate(30 80 505)" opacity=".85"/>
+    <ellipse cx="402" cy="480" rx="20" ry="8" transform="rotate(50 402 480)"/>
+    <ellipse cx="384" cy="446" rx="18" ry="7" transform="rotate(20 384 446)" opacity=".8"/>
+    <ellipse cx="410" cy="515" rx="18" ry="7" transform="rotate(-25 410 515)" opacity=".85"/>
+  </g>
+  <g>
+    <circle cx="146" cy="398" r="11" fill="#F4A7B9"/>
+    <circle cx="146" cy="398" r="4" fill="#D45D7A"/>
+    <circle cx="358" cy="420" r="9" fill="#F4A7B9"/>
+    <circle cx="358" cy="420" r="3.5" fill="#D45D7A"/>
+  </g>
+
+  <!-- Hair, back -->
+  <path d="M206 92c-6-38 34-62 70-50 34 12 40 50 30 82-8 30-30 56-38 96-8 40-44 62-70 44-24-16-14-52-6-84 6-24 18-56 14-88z" fill="url(#hair)"/>
+
+  <!-- Neck -->
+  <path d="M244 150h22l6 52h-34z" fill="#EDB59E"/>
+
+  <!-- Dress -->
+  <path d="M214 200c18-14 58-16 76-2 12 18 14 40 16 58 46 14 70 66 56 116-10 34-34 52-48 58 18 40 32 80 38 118H164c8-56 18-104 26-142-12-64-8-148 24-206z" fill="url(#dress)"/>
+  <ellipse cx="318" cy="330" rx="56" ry="64" fill="url(#belly)"/>
+  <path d="M200 252c30 10 70 10 100 2" fill="none" stroke="#C95A77" stroke-opacity=".35" stroke-width="3" stroke-linecap="round"/>
+
+  <!-- Face -->
+  <ellipse cx="258" cy="116" rx="33" ry="40" fill="#F4C9B4"/>
+  <path d="M288 110c8 8 10 16 2 20" fill="#F4C9B4"/>
+  <path d="M270 112q6 4 12 0" fill="none" stroke="#6B3D35" stroke-width="2.4" stroke-linecap="round"/>
+  <circle cx="272" cy="130" r="7" fill="#F2A2A8" opacity=".55"/>
+  <path d="M276 144q6 4 11-1" fill="none" stroke="#B85A62" stroke-width="2.4" stroke-linecap="round"/>
+
+  <!-- Hair, front -->
+  <path d="M222 100c8-34 60-46 76-10-22-6-46-2-62 18-4 10-6 22-6 34-8-12-12-28-8-42z" fill="url(#hair)"/>
+
+  <!-- Upper arm and sleeve -->
+  <path d="M252 204c32 2 44 46 42 92l-24 4c-2-36-10-66-28-84z" fill="#D9688A"/>
+  <!-- Forearm and hand on the bump -->
+  <path d="M272 292c14 30 34 52 62 58 12 3 14 14 2 17-30 4-58-22-80-66z" fill="#F4C9B4"/>
+  <path d="M332 352c10-2 18 2 18 8" fill="none" stroke="#E2A58E" stroke-width="2" stroke-linecap="round"/>
+  <!-- Second hand under the bump -->
+  <path d="M276 408c20 2 40-6 52-18 6-6 14-2 10 6-12 20-40 30-64 26z" fill="#EDB59E"/>
+
+  <!-- Heart -->
+  <path d="M396 132c-8-12-28-6-24 10 3 10 24 24 24 24s21-14 24-24c4-16-16-22-24-10z" fill="#D45D7A" opacity=".85"/>
+  <path d="M120 180c-5-7-17-4-15 6 2 6 15 15 15 15s13-9 15-15c2-10-10-13-15-6z" fill="#F4A7B9"/>
+</svg>
