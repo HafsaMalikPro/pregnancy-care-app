@@ -1,108 +1,289 @@
 @import "tailwindcss";
 
 /*
- * Pregnancy Care design tokens — one light theme, from the brand brief:
- * cream #FFF7F2, white, rose #D45D7A, plum #512D46, blush #FCE3E5, sage #80A987,
- * lavender #A58BD4.
+ * Pregnancy Care design system. Full rationale and contrast table: docs/DESIGN_SYSTEM.md.
  *
- * Roles (checked for contrast):
- * - `--rose` is the brief's brand rose: illustrations, accents, gradient starts.
- * - `--clay` is a deeper rose for surfaces behind white text (4.8:1 on white).
- * - `--clay-strong` is rose text on cream or blush (6:1).
- * - `--sage` is "done" text/icons on light surfaces; `--sage-bright` is the brief's sage fill.
- * - `--plum` is the readable lavender for calm information text; `--lavender` is the fill.
+ * Palette: blush paper and white cards, a rose primary for actions (white on it is 4.9:1),
+ * berry-plum headings, sage-leaf green for "done" and leaves, lavender as a quiet second accent.
+ * Dark mode is a berry night with a soft pink action colour (dark text on it, 7.7:1). Every
+ * text token clears 4.5:1 on every surface token in its theme.
+ *
+ * Semantic tokens (use these in new code): paper, card, sunk, ink, heading, muted, line,
+ * primary / on-primary, peach (the pink fill), sage, lavender, danger, warn and their -soft
+ * surfaces. Legacy names (clay, plum, rose, slate, blush) are aliases kept so older screens
+ * follow the theme; don't add new uses.
  */
 :root {
   color-scheme: light;
-  --paper: #fff7f2;
-  --paper-2: #fdeeee;
+  --font-display: var(--font-body);
+  --paper: #fff5f7;
+  --paper-2: #fdecf0;
   --card: #ffffff;
-  --sunk: #fdf0ee;
-  --ink: #5b4352;
-  --heading: #512d46;
-  --muted: #7a6470;
-  --line: #f6e3e1;
-  --slate: #512d46;
-  --rose: #d45d7a;
-  --clay: #c2456a;
-  --clay-strong: #a8335a;
-  --clay-soft: #fce3e5;
-  --sage: #4e7a57;
-  --sage-bright: #80a987;
-  --sage-soft: #eaf3ec;
-  --plum: #6a4fa8;
-  --lavender: #a58bd4;
-  --plum-soft: #f1ebfa;
-  --warn: #8a5300;
-  --warn-soft: #fcf0dc;
-  --danger: #b42318;
-  --danger-soft: #fde8e6;
-  --shadow: 0 1px 2px rgb(81 45 70 / 0.04), 0 12px 30px -16px rgb(212 93 122 / 0.28);
+  --sunk: #fcedf1;
+  --ink: #5b3a51;
+  --heading: #4a1d3d;
+  --muted: #7f5a73;
+  --line: #f6dbe3;
+
+  --primary: #d0325f;
+  --primary-hover: #b52a5b;
+  --on-primary: #ffffff;
+  /* Text-weight accent for links and active states. */
+  --primary-ink: #b52a5b;
+
+  /* The pink fill: illustrations, gradient starts, soft badges. */
+  --peach: #f48aa6;
+  --peach-soft: #fde4eb;
+  --peach-ink: #9e2550;
+  --sage: #3d7448;
+  --sage-fill: #7fbf86;
+  --sage-soft: #e8f4e4;
+  --lavender: #5d4b91;
+  --lavender-fill: #c9bce6;
+  --lavender-soft: #f1ecfa;
+  --warn: #7d4d00;
+  --warn-soft: #fdf0dc;
+  --danger: #a8231b;
+  --on-danger: #ffffff;
+  --danger-soft: #fde6e4;
+
+  --shadow: 0 1px 2px rgb(74 29 61 / 0.04), 0 16px 34px -20px rgb(208 50 95 / 0.32);
+  --shadow-lift: 0 2px 4px rgb(74 29 61 / 0.05), 0 24px 44px -20px rgb(208 50 95 / 0.42);
+
+  /* Spacing rhythm (4px base) and radii by hierarchy: controls < cards < panels. */
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-6: 1.5rem;
+  --space-8: 2rem;
+  --radius-control: 0.875rem;
+  --radius-card: 1.25rem;
+  --radius-panel: 2rem;
+
+  /* Motion. JS mirror in src/lib/motion.ts. */
+  --dur-instant: 0ms;
+  --dur-fast: 120ms;
+  --dur-base: 220ms;
+  --dur-slow: 420ms;
+  --dur-count: 900ms;
+  --dur-breath: 8s;
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+
+  /* Legacy names as raw variables, for inline SVG strokes and accent-[var(--clay)]. */
+  --clay: var(--primary);
+  --clay-strong: var(--primary-ink);
+  --clay-soft: var(--peach-soft);
+  --rose: var(--peach);
+  --blush: var(--peach-soft);
+  --slate: var(--heading);
+  --sage-bright: var(--sage-fill);
+  --plum: var(--lavender);
+  --plum-soft: var(--lavender-soft);
+
+  /* Rose hero cards (week banner, dashboard week): deep rose in both themes, white text. */
+  --hero-from: #f48aa6;
+  --hero-via: #d0325f;
+  --hero-to: #b52a5b;
+  /* Rose text on the white button inside a hero card. */
+  --hero-ink: #b52a5b;
+}
+
+/*
+ * Light pink is the theme everywhere, whatever the system setting (the brand is light).
+ * The dark palette below applies only when data-theme="dark" is set explicitly.
+ */
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --paper: #1c1219;
+  --paper-2: #21151e;
+  --card: #2a1a26;
+  --sunk: #241620;
+  --ink: #f0e2e8;
+  --heading: #fdeef3;
+  --muted: #c4a7b8;
+  --line: #42293a;
+  --primary: #ff8fab;
+  --primary-hover: #ffa6bc;
+  --on-primary: #3a0f24;
+  --primary-ink: #ff9fb8;
+  --peach: #f27a98;
+  --peach-soft: #3d2030;
+  --peach-ink: #ff9fb8;
+  --sage: #9fd09f;
+  --sage-fill: #6fae76;
+  --sage-soft: #1f2d23;
+  --lavender: #c6b6ee;
+  --lavender-fill: #7d6aae;
+  --lavender-soft: #2a2338;
+  --warn: #f0c46c;
+  --warn-soft: #33270f;
+  --danger: #ff9c92;
+  --on-danger: #2a0f0d;
+  --danger-soft: #3b1d1f;
+  --shadow: 0 1px 2px rgb(0 0 0 / 0.3), 0 14px 32px -18px rgb(0 0 0 / 0.6);
+  --shadow-lift: 0 2px 4px rgb(0 0 0 / 0.35), 0 22px 40px -20px rgb(0 0 0 / 0.7);
 }
 
 @theme inline {
   --color-paper: var(--paper);
   --color-paper-2: var(--paper-2);
-  --color-blush: var(--clay-soft);
   --color-card: var(--card);
   --color-sunk: var(--sunk);
   --color-ink: var(--ink);
   --color-heading: var(--heading);
   --color-muted: var(--muted);
   --color-line: var(--line);
-  --color-rose: var(--rose);
-  --color-clay: var(--clay);
-  --color-clay-strong: var(--clay-strong);
-  --color-clay-soft: var(--clay-soft);
-  --color-slate: var(--slate);
+  --color-primary: var(--primary);
+  --color-primary-hover: var(--primary-hover);
+  --color-on-primary: var(--on-primary);
+  --color-primary-ink: var(--primary-ink);
+  --color-peach: var(--peach);
+  --color-peach-soft: var(--peach-soft);
+  --color-peach-ink: var(--peach-ink);
   --color-sage: var(--sage);
-  --color-sage-bright: var(--sage-bright);
+  --color-sage-fill: var(--sage-fill);
   --color-sage-soft: var(--sage-soft);
-  --color-plum: var(--plum);
   --color-lavender: var(--lavender);
-  --color-plum-soft: var(--plum-soft);
+  --color-lavender-fill: var(--lavender-fill);
+  --color-lavender-soft: var(--lavender-soft);
   --color-warn: var(--warn);
   --color-warn-soft: var(--warn-soft);
   --color-danger: var(--danger);
+  --color-on-danger: var(--on-danger);
   --color-danger-soft: var(--danger-soft);
+
+  /* Legacy aliases (older screens). */
+  --color-clay: var(--primary);
+  --color-clay-strong: var(--primary-ink);
+  --color-clay-soft: var(--peach-soft);
+  --color-rose: var(--peach);
+  --color-blush: var(--peach-soft);
+  --color-slate: var(--heading);
+  --color-sage-bright: var(--sage-fill);
+  --color-plum: var(--lavender);
+  --color-plum-soft: var(--lavender-soft);
+
   --shadow-soft: var(--shadow);
+  --shadow-lift: var(--shadow-lift);
+  --radius-control: var(--radius-control);
+  --radius-card: var(--radius-card);
+  --radius-panel: var(--radius-panel);
+
   --font-sans: var(--font-body);
+  --font-display: var(--font-display);
+
+  --ease-gentle: var(--ease-out);
 }
 
 body {
-  /* The soft cream-to-blush wash behind every page in the reference design. */
-  background: linear-gradient(180deg, var(--paper) 0%, var(--paper-2) 100%) fixed var(--paper);
+  background: var(--paper);
   color: var(--ink);
+  font-size: 1.0625rem;
+  line-height: 1.6;
 }
 
-/* In the base layer so a text colour utility on a heading can override it. */
+/* Theme changes fade colours instead of snapping (off for reduced motion, below). */
+body,
+body * {
+  transition-property: background-color, border-color, color, fill, stroke;
+  transition-duration: var(--dur-base);
+  transition-timing-function: var(--ease-out);
+}
+/* Never fade the emergency message or form controls' text while typing. */
+[data-no-transition],
+[data-no-transition] *,
+input,
+textarea,
+select {
+  transition: none !important;
+}
+
 @layer base {
   h1,
   h2,
   h3 {
     color: var(--heading);
     text-wrap: balance;
+    font-family: var(--font-display), Georgia, serif;
+    letter-spacing: -0.015em;
+    line-height: 1.15;
+  }
+  p {
+    text-wrap: pretty;
   }
 }
 
-:focus-visible {
-  outline: 2px solid var(--clay);
-  outline-offset: 2px;
+/* Larger text (profile setting). */
+html[data-larger-text="true"] body {
+  font-size: 1.1875rem;
 }
 
+:focus-visible {
+  outline: 3px solid var(--primary-ink);
+  outline-offset: 2px;
+  border-radius: 0.5rem;
+}
+
+/* Reduced motion: no movement anywhere; Motion components fall back in JS as well. */
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
   *::after {
     animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+html[data-reduced-motion="true"] *,
+html[data-reduced-motion="true"] *::before,
+html[data-reduced-motion="true"] *::after {
+  animation-duration: 0.01ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.01ms !important;
+}
+
+/* Skeleton shimmer: a slow sweep. With reduced motion it is a still tint. */
+.skeleton {
+  background: linear-gradient(100deg, var(--sunk) 30%, var(--card) 50%, var(--sunk) 70%) var(--sunk);
+  background-size: 300% 100%;
+  animation: skeleton-sweep 1.6s var(--ease-in-out) infinite;
+  border-radius: var(--radius-control);
+}
+@keyframes skeleton-sweep {
+  from {
+    background-position: 100% 0;
+  }
+  to {
+    background-position: 0 0;
   }
 }
 
-/* Grid items may shrink below their content (e.g. scrollable week strips) instead of
-   widening the page. */
+/* The current week in the timeline: a slow, soft halo. */
+.pulse-soft {
+  animation: pulse-soft 2.8s var(--ease-in-out) infinite;
+}
+@keyframes pulse-soft {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 color-mix(in oklab, var(--primary) 35%, transparent);
+  }
+  50% {
+    box-shadow: 0 0 0 10px color-mix(in oklab, var(--primary) 0%, transparent);
+  }
+}
+
 @layer base {
   .grid > * {
     min-width: 0;
   }
+}
+
+.scrollbar-none {
+  scrollbar-width: none;
+}
+.scrollbar-none::-webkit-scrollbar {
+  display: none;
 }

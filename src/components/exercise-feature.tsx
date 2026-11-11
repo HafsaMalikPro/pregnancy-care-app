@@ -84,7 +84,7 @@ export function ExerciseFeature({ activities }: { activities: Activity[] }) {
             aria-expanded={started}
             aria-controls="exercise-steps"
             onClick={() => setStarted(!started)}
-            className="mt-6 inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-full bg-linear-to-b from-clay to-clay-strong px-5 font-semibold text-white shadow-soft hover:brightness-95"
+            className="mt-6 inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-full bg-linear-to-b from-clay to-clay-strong px-5 font-semibold text-on-primary shadow-soft hover:brightness-95"
           >
             {started ? <X className="size-4" aria-hidden /> : <Play className="size-4" aria-hidden />}
             {started ? "Close steps" : "Start exercise"}

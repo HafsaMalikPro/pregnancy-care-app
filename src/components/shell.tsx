@@ -477,7 +477,7 @@ function AppFrame({ children }: { children: React.ReactNode }) {
           </div>
         )}
 
-        <main id="main" className="mx-auto w-full max-w-6xl flex-1 px-4 pb-28 pt-6 sm:px-8 sm:pt-8 lg:pb-12 lg:pt-0">
+        <main id="main" className="mx-auto w-full max-w-6xl flex-1 px-4 pb-28 pt-6 sm:px-8 sm:pt-8 lg:pb-12 lg:pt-8">
           {linkError && (
             <div className="mb-6">
               <Alert tone="warn">{linkError}</Alert>
@@ -533,7 +533,7 @@ function Avatar() {
     <Link
       href="/settings"
       aria-label="Profile and settings"
-      className="grid size-10 place-items-center rounded-full bg-linear-to-br from-rose to-clay text-sm font-bold text-white shadow-soft ring-2 ring-white"
+      className="grid size-10 place-items-center rounded-full bg-linear-to-br from-clay to-clay-strong text-sm font-bold text-on-primary shadow-soft ring-2 ring-white"
     >
       {initials ?? <UserRound className="size-5" aria-hidden />}
     </Link>
