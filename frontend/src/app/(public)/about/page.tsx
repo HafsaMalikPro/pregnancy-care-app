@@ -44,7 +44,7 @@ export default function AboutPage() {
         intro="Pregnancy Care follows your pregnancy week by week, from the first scan to your baby's first days, with guidance reviewed by clinicians."
         art={
           <Image
-            src="/assets/illustrations/mother-clean.png"
+            src="/assets/illustrations/mother-cutout.png"
             alt="Illustration of a pregnant woman holding her bump"
             width={1179}
             height={1187}

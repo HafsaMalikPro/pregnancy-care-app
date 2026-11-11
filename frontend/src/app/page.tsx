@@ -46,7 +46,7 @@ export default async function HomePage() {
             <div className="mt-8 flex flex-wrap gap-3">
               <ButtonLink
                 href="/signup"
-                className="min-h-13 bg-linear-to-b from-rose to-clay px-7 text-base shadow-[0_12px_24px_-12px_rgb(200_64_106/0.7)]"
+                className="min-h-13 bg-linear-to-b from-clay to-clay-strong px-7 text-base shadow-[0_12px_24px_-12px_rgb(208_50_95/0.7)]"
               >
                 Start Your Journey <ArrowRight className="size-4" aria-hidden />
               </ButtonLink>
@@ -73,7 +73,7 @@ export default async function HomePage() {
             <LeafBranch className="absolute -left-4 bottom-0 h-56 w-40" />
             <LeafBranch flip className="absolute -right-6 bottom-6 h-64 w-44" />
             <Image
-              src="/assets/illustrations/mother-clean.png"
+              src="/assets/illustrations/mother-cutout.png"
               alt="Illustration of a pregnant woman holding her bump, surrounded by leaves and flowers"
               width={1179}
               height={1187}

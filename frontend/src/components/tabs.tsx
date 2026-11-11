@@ -69,7 +69,7 @@ export function Tabs({ tabs, label }: { tabs: TabDef[]; label: string }) {
               className={cx(
                 "shrink-0 rounded-full border px-5 py-2 text-sm font-semibold transition",
                 selected
-                  ? "border-clay bg-linear-to-b from-rose to-clay text-white shadow-[0_8px_18px_-10px_rgb(200_64_106/0.8)]"
+                  ? "border-clay bg-linear-to-b from-clay to-clay-strong text-on-primary shadow-[0_8px_18px_-10px_rgb(208_50_95/0.8)]"
                   : "border-line bg-card text-slate hover:border-clay/40",
               )}
             >
