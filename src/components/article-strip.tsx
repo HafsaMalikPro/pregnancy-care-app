@@ -1,24 +1,8 @@
 import { ArrowRight } from "lucide-react";
-import Image from "next/image";
 import Link from "next/link";
-import { topicFor, type Topic } from "@/components/art";
+import { TopicPhoto, topicFor, type Topic } from "@/components/art";
 import { formatDate } from "@/lib/dates";
 import type { ArticleSummary } from "@/lib/types";
-
-/*
- * Article photos (public/assets/articles) are from Unsplash, free under the Unsplash License:
- * eating bM0Bbefyiw4, exercise t1NEMSm1rgI, symptoms OyvZbtXJRlA, birth -G2iJF_aUws.
- */
-type Photo = "eating" | "exercise" | "symptoms" | "birth";
-
-const TOPIC_PHOTO: Record<Topic, Photo> = {
-  nutrition: "eating",
-  movement: "exercise",
-  sleep: "symptoms",
-  wellbeing: "symptoms",
-  baby: "birth",
-  care: "birth",
-};
 
 const TOPIC_LABEL: Record<Topic, string> = {
   nutrition: "Nutrition",
@@ -31,22 +15,24 @@ const TOPIC_LABEL: Record<Topic, string> = {
 
 /** Shown while no articles are published (or the API is unreachable); they lead to Learn. */
 const FALLBACK_ARTICLES = [
-  { title: "Healthy Eating During Pregnancy", tag: "Nutrition", meta: "5 min read", photo: "eating" },
-  { title: "Gentle Exercises for Expecting Mums", tag: "Exercise", meta: "4 min read", photo: "exercise" },
-  { title: "Understanding Your Symptoms", tag: "Wellbeing", meta: "6 min read", photo: "symptoms" },
-  { title: "Preparing for Birth", tag: "Birth", meta: "7 min read", photo: "birth" },
-] as const satisfies readonly { title: string; tag: string; meta: string; photo: Photo }[];
+  { title: "Healthy Eating During Pregnancy", tag: "Nutrition", meta: "5 min read", topic: "nutrition" },
+  { title: "Gentle Exercises for Expecting Mums", tag: "Exercise", meta: "4 min read", topic: "movement" },
+  { title: "Understanding Your Symptoms", tag: "Wellbeing", meta: "6 min read", topic: "wellbeing" },
+  { title: "Preparing for Birth", tag: "Birth", meta: "7 min read", topic: "care" },
+] as const satisfies readonly { title: string; tag: string; meta: string; topic: Topic }[];
 
 function articleCards(items: ArticleSummary[]) {
-  if (items.length === 0) return FALLBACK_ARTICLES.map((a) => ({ ...a, href: "/articles" }));
+  if (items.length === 0)
+    return FALLBACK_ARTICLES.map((a) => ({ ...a, href: "/articles", slug: undefined as string | undefined }));
   return items.slice(0, 4).map((a) => {
     const topic = topicFor(`${a.slug} ${a.title}`);
     return {
       href: `/articles/${a.slug}`,
+      slug: a.slug as string | undefined,
       title: a.title,
       tag: a.premium ? "Premium" : TOPIC_LABEL[topic],
       meta: formatDate(a.publishedAt, { day: "numeric", month: "long", year: "numeric" }),
-      photo: TOPIC_PHOTO[topic],
+      topic,
     };
   });
 }
@@ -72,11 +58,10 @@ export function ArticleStrip({ articles }: { articles: ArticleSummary[] }) {
               className="group flex h-full flex-col rounded-2xl border border-white bg-card p-2 shadow-soft transition hover:-translate-y-0.5 hover:border-clay/30"
             >
               <span className="relative block">
-                <Image
-                  src={`/assets/articles/photo-${a.photo}.jpg`}
-                  alt=""
-                  width={376}
-                  height={184}
+                <TopicPhoto
+                  topic={a.topic}
+                  slug={a.slug}
+                  decorative
                   sizes="(min-width: 1024px) 16rem, (min-width: 640px) 50vw, 100vw"
                   className="aspect-2/1 h-auto w-full rounded-xl object-cover"
                 />

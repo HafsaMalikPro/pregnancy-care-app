@@ -1,12 +1,19 @@
 import type { Metadata, Viewport } from "next";
-import { Nunito_Sans } from "next/font/google";
+import { Figtree } from "next/font/google";
+import { MotionProvider } from "@/components/motion";
 import { SessionProvider } from "@/components/session-provider";
 import { SITE_URL } from "@/lib/site";
 import "./globals.css";
 
-const body = Nunito_Sans({
+/*
+ * One sans-serif family for the whole site. Figtree is a free stand-in for Aeonik (a licensed
+ * CoType font). To use Aeonik, add its licensed .woff2 files under src/fonts/aeonik/, load them
+ * with next/font/local using variable "--font-body", and remove this Figtree block.
+ */
+const body = Figtree({
   variable: "--font-body",
   subsets: ["latin"],
+  display: "swap",
 });
 
 const description =
@@ -39,7 +46,9 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       className={`${body.variable} h-full antialiased`}
     >
       <body className="flex min-h-full flex-col font-sans">
-        <SessionProvider>{children}</SessionProvider>
+        <MotionProvider>
+          <SessionProvider>{children}</SessionProvider>
+        </MotionProvider>
       </body>
     </html>
   );
