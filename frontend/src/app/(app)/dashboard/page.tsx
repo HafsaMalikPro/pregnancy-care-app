@@ -137,7 +137,7 @@ export default function DashboardPage() {
 
       <div className="grid gap-5 lg:grid-cols-[1.55fr_1fr]">
         {/* Current week */}
-        <section className="relative grid items-center overflow-hidden rounded-3xl bg-linear-to-r from-rose to-clay text-white shadow-soft sm:grid-cols-[minmax(0,15rem)_1fr]">
+        <section className="relative grid items-center overflow-hidden rounded-3xl bg-linear-to-r from-(--hero-from) via-(--hero-via) via-40% to-(--hero-to) text-white shadow-soft sm:grid-cols-[minmax(0,15rem)_1fr]">
           <Image
             src="/assets/illustrations/baby-clean.jpg"
             alt="Illustration of a baby curled up in the womb"
@@ -161,7 +161,7 @@ export default function DashboardPage() {
               <p className="mt-1 text-sm font-semibold text-white">{TERM_STATUS[p.termStatus]}</p>
             )}
             <div className="mt-4">
-              <ButtonLink href="/timeline" variant="secondary" className="border-white bg-white text-clay-strong">
+              <ButtonLink href="/timeline" variant="secondary" className="border-white bg-white text-(--hero-ink)! hover:bg-white/90">
                 View Journey <ArrowRight className="size-4" aria-hidden />
               </ButtonLink>
             </div>

@@ -10,7 +10,7 @@ import { cx } from "@/lib/cx";
 type ButtonVariant = "primary" | "secondary" | "ghost" | "danger";
 
 const BUTTON_VARIANTS: Record<ButtonVariant, string> = {
-  primary: "bg-linear-to-b from-clay to-clay-strong text-white shadow-soft hover:brightness-95",
+  primary: "bg-linear-to-b from-clay to-clay-strong text-on-primary shadow-soft hover:brightness-95",
   secondary: "border border-clay/40 bg-card text-clay-strong hover:bg-clay-soft",
   ghost: "text-ink hover:bg-sunk",
   danger: "bg-danger text-white hover:opacity-90",

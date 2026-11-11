@@ -24,7 +24,7 @@ export function WeekHero({
   priority?: boolean;
 }) {
   return (
-    <section className="relative overflow-hidden rounded-[2rem] bg-linear-to-r from-rose to-clay text-white shadow-soft">
+    <section className="relative overflow-hidden rounded-[2rem] bg-linear-to-r from-(--hero-from) via-(--hero-via) via-40% to-(--hero-to) text-white shadow-soft">
       <div className="grid items-center gap-2 sm:grid-cols-[minmax(0,15rem)_1fr]">
         <WombArt
           week={week}

@@ -1,25 +1,22 @@
-import { randomBytes } from 'node:crypto';
 import type { INestApplication } from '@nestjs/common';
 import request from 'supertest';
 import type { App } from 'supertest/types.js';
-import { createTestApp, PASSWORD, uniqueEmail } from './helpers.js';
+import {
+  createTestApp,
+  getPrisma,
+  PASSWORD,
+  productionEnv,
+  uniqueEmail,
+} from './helpers.js';
 
 describe('Production mode (e2e)', () => {
   let app: INestApplication<App>;
 
   beforeAll(async () => {
     // Production refuses unsafe settings at boot (see config/env.ts), so use real-looking ones.
-    app = await createTestApp({
-      NODE_ENV: 'production',
-      // Production refuses weak or placeholder secrets (CI's shared value is one).
-      BETTER_AUTH_SECRET: randomBytes(32).toString('base64'),
-      RATE_LIMIT_ENABLED: 'true',
-      ADMIN_REQUIRE_MFA: 'true',
-      BETTER_AUTH_URL: 'https://api.example.test',
-      APP_URL: 'https://app.example.test',
-      CORS_ORIGINS: 'https://app.example.test',
-      EMAIL_PROVIDER: 'none',
-    });
+    // A configuration production accepts (see config/env.ts and helpers.productionEnv). Email is
+    // Resend in name only: the test helper swaps in the in-memory sender.
+    app = await createTestApp(productionEnv());
   });
 
   afterAll(async () => {
@@ -37,16 +34,13 @@ describe('Production mode (e2e)', () => {
     '/v1/auth/request-password-reset',
     '/v1/auth/reset-password',
     '/v1/auth/send-verification-email',
-  ])(
-    'answers 404 for %s without an email provider (documented as conditional)',
-    async (path) => {
-      await request(app.getHttpServer())
-        .post(path)
-        .set('Origin', 'https://app.example.test')
-        .send({})
-        .expect(404);
-    },
-  );
+  ])('serves %s (production requires an email provider)', async (path) => {
+    const res = await request(app.getHttpServer())
+      .post(path)
+      .set('Origin', 'https://app.example.test')
+      .send({});
+    expect(res.status).not.toBe(404);
+  });
 
   it('sends HSTS and the strict API CSP in production', async () => {
     const res = await request(app.getHttpServer()).get('/v1/health/live');
@@ -69,10 +63,24 @@ describe('Production mode (e2e)', () => {
   });
 
   it('issues session cookies with the Secure and HttpOnly attributes', async () => {
-    const res = await request(app.getHttpServer())
+    const http = request(app.getHttpServer());
+    const email = uniqueEmail();
+    // Production requires email verification (F-03): sign-up starts no session.
+    const up = await http
       .post('/v1/auth/sign-up/email')
       .set('Origin', 'https://app.example.test')
-      .send({ email: uniqueEmail(), password: PASSWORD, name: 'Prod Check' })
+      .send({ email, password: PASSWORD, name: 'Prod Check' })
+      .expect(200);
+    expect(up.body.token).toBeNull();
+    const prisma = await getPrisma(app);
+    await prisma.user.update({
+      where: { email },
+      data: { emailVerified: true },
+    });
+    const res = await http
+      .post('/v1/auth/sign-in/email')
+      .set('Origin', 'https://app.example.test')
+      .send({ email, password: PASSWORD })
       .expect(200);
     const cookies = ([] as string[]).concat(res.headers['set-cookie'] ?? []);
     const session = cookies.find((c) => c.includes('session_token='));

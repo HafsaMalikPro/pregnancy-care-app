@@ -61,3 +61,27 @@ export function reminderEmail(
     ].join('\n'),
   };
 }
+
+/**
+ * Sent instead of an error when someone signs up with an address that already has an account
+ * (security finding F-03), so the sign-up response cannot reveal who is registered.
+ */
+export function accountExistsEmail(
+  to: string,
+  signInLink: string,
+): EmailMessage {
+  return {
+    to,
+    tag: 'account_exists',
+    subject: 'Someone tried to create a Pregnancy Care account with your email',
+    text: [
+      'Someone just tried to create a Pregnancy Care account with this email address, which',
+      'already has an account.',
+      '',
+      'If it was you, sign in instead (you can reset your password from the sign-in page):',
+      signInLink,
+      '',
+      "If it wasn't you, you can ignore this email. Nothing about your account has changed.",
+    ].join('\n'),
+  };
+}

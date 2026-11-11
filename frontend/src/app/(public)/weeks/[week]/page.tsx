@@ -155,7 +155,7 @@ export default async function WeekPage({ params }: PageProps<"/weeks/[week]">) {
         {week < 42 && (
           <ButtonLink
             href={`/weeks/${week + 1}`}
-            className="min-h-12 min-w-64 bg-linear-to-b from-rose to-clay px-8 shadow-[0_12px_24px_-12px_rgb(200_64_106/0.7)]"
+            className="min-h-12 min-w-64 bg-linear-to-b from-clay to-clay-strong px-8 shadow-[0_12px_24px_-12px_rgb(208_50_95/0.7)]"
           >
             Next: Week {week + 1} <ArrowRight className="size-4" aria-hidden />
           </ButtonLink>

@@ -124,6 +124,16 @@ const EnvSchema = z.object({
    * the first 5 hex characters of the SHA-1 leave the server); needs outbound HTTPS.
    */
   PASSWORD_BREACH_CHECK: z.enum(['bundled', 'hibp']).default('bundled'),
+  /**
+   * Sign-up cannot reveal registered emails (F-03): new accounts must confirm their email
+   * before signing in, sign-up answers the same way for new and existing addresses, and an
+   * unverified sign-in gets the same 401 as a wrong password. Needs an EMAIL_PROVIDER.
+   * Default: on whenever an email provider is configured. Production requires it on.
+   */
+  AUTH_REQUIRE_EMAIL_VERIFICATION: z
+    .enum(['true', 'false'])
+    .optional()
+    .transform((v) => (v === undefined ? undefined : v === 'true')),
   /** Inactive anonymous sessions (and their data) expire after this many days. */
   ANONYMOUS_SESSION_TTL_DAYS: z.coerce.number().int().positive().default(180),
   /**
@@ -196,6 +206,9 @@ function checkCombinations(
     if (!env.EMAIL_FROM) issue('EMAIL_FROM', 'required for resend');
     if (!env.RESEND_API_KEY) issue('RESEND_API_KEY', 'required for resend');
   }
+  if (requireEmailVerification(env) && env.EMAIL_PROVIDER === 'none') {
+    issue('AUTH_REQUIRE_EMAIL_VERIFICATION', 'needs an EMAIL_PROVIDER');
+  }
   if (env.REMINDER_DELIVERY_ENABLED && env.EMAIL_PROVIDER === 'none') {
     issue('REMINDER_DELIVERY_ENABLED', 'needs an EMAIL_PROVIDER');
   }
@@ -205,6 +218,12 @@ function checkCombinations(
   if (env.NODE_ENV !== 'production') return;
   if (!env.FIELD_ENCRYPTION_KEYS || !env.FIELD_ENCRYPTION_ACTIVE_KEY) {
     issue('FIELD_ENCRYPTION_KEYS', 'required in production');
+  }
+  if (!requireEmailVerification(env)) {
+    issue(
+      'AUTH_REQUIRE_EMAIL_VERIFICATION',
+      'must be on in production (and needs an EMAIL_PROVIDER)',
+    );
   }
   if (weakSecret(env.BETTER_AUTH_SECRET)) {
     issue('BETTER_AUTH_SECRET', 'too weak or a placeholder');
@@ -241,6 +260,14 @@ export function weakSecret(secret: string): boolean {
 }
 
 const CheckedEnvSchema = EnvSchema.superRefine(checkCombinations);
+
+/** Whether sign-up requires email verification (explicit setting, else: an email provider exists). */
+export function requireEmailVerification(env: {
+  AUTH_REQUIRE_EMAIL_VERIFICATION?: boolean;
+  EMAIL_PROVIDER: string;
+}): boolean {
+  return env.AUTH_REQUIRE_EMAIL_VERIFICATION ?? env.EMAIL_PROVIDER !== 'none';
+}
 
 /** Whether session cookies get the Secure attribute (explicit setting, else by environment). */
 export function secureCookies(env: {
