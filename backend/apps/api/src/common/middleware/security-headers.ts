@@ -42,6 +42,9 @@ export function applySecurityHeaders(express: Express): void {
   };
   const api = helmet({
     ...common,
+    // Cross-origin isolation for every API response, including Better Auth's HTML error page
+    // (ZAP 90004, finding P-08). The dev-only Swagger UI below is left without it.
+    crossOriginEmbedderPolicy: { policy: 'require-corp' },
     contentSecurityPolicy: { useDefaults: false, directives: parse(API_CSP) },
   });
   const docs = helmet({

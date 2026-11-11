@@ -33,6 +33,10 @@ export const authProvider: Provider = {
         PASSWORD_BREACH_CHECK: config.get('PASSWORD_BREACH_CHECK', {
           infer: true,
         }),
+        AUTH_REQUIRE_EMAIL_VERIFICATION: config.get(
+          'AUTH_REQUIRE_EMAIL_VERIFICATION',
+          { infer: true },
+        ),
       },
       email,
       security,

@@ -1,6 +1,11 @@
 import { betterAuth } from 'better-auth';
 import { prismaAdapter } from 'better-auth/adapters/prisma';
-import { APIError, createAuthMiddleware, isAPIError } from 'better-auth/api';
+import {
+  APIError,
+  createAuthMiddleware,
+  getSessionFromCtx,
+  isAPIError,
+} from 'better-auth/api';
 import {
   bearer,
   haveIBeenPwned,
@@ -12,7 +17,12 @@ import { RedactingLogger } from '../common/logging/redacting-logger.js';
 import { type Env, secureCookies } from '../config/env.js';
 import type { PrismaService } from '../database/prisma.service.js';
 import type { EmailMessage, EmailSender } from '../email/email-sender.js';
-import { passwordResetEmail, verificationEmail } from '../email/templates.js';
+import {
+  accountExistsEmail,
+  passwordResetEmail,
+  verificationEmail,
+} from '../email/templates.js';
+import { TotpReplayGuard } from './totp-replay.js';
 import { CLIENT_IP_HEADER } from './client-ip.js';
 import {
   hashPassword,
@@ -109,6 +119,7 @@ export type AuthEnv = Pick<
   | 'APP_URL'
   | 'AUTH_COOKIE_SECURE'
   | 'PASSWORD_BREACH_CHECK'
+  | 'AUTH_REQUIRE_EMAIL_VERIFICATION'
 >;
 
 const COMPROMISED = {
@@ -151,6 +162,24 @@ export function createAuth(
 ) {
   const appUrl = env.APP_URL.replace(/\/$/, '');
   const throttle = new SignInThrottle(prisma, env.RATE_LIMIT_ENABLED);
+  const totpReplay = new TotpReplayGuard(prisma, env.BETTER_AUTH_SECRET);
+  // F-03: no account enumeration through sign-up (needs email to confirm new accounts).
+  const verifyEmail = env.AUTH_REQUIRE_EMAIL_VERIFICATION ?? email.enabled;
+  /** The user behind a 2FA step: the session (enrolment) or the sign-in challenge cookie. */
+  const twoFactorUserId = async (
+    ctx: Parameters<Parameters<typeof createAuthMiddleware>[0]>[0],
+  ): Promise<string | null> => {
+    const session = await getSessionFromCtx(ctx).catch(() => null);
+    if (session) return session.user.id;
+    const signed = await ctx.getSignedCookie(
+      ctx.context.createAuthCookie('two_factor').name,
+      ctx.context.secret,
+    );
+    if (!signed) return null;
+    const record =
+      await ctx.context.internalAdapter.findVerificationValue(signed);
+    return record?.value ?? null;
+  };
   const clientIp = (headers: Headers | undefined) =>
     headers?.get(CLIENT_IP_HEADER) || null;
   return betterAuth({
@@ -186,6 +215,18 @@ export function createAuth(
             return {
               context: { body: { ...ctx.body, revokeOtherSessions: true } },
             };
+          case '/two-factor/verify-totp': {
+            const code = field(ctx.body, 'code');
+            const userId = code ? await twoFactorUserId(ctx) : null;
+            if (code && userId && !(await totpReplay.reserve(userId, code))) {
+              // Same answer as a wrong code: a replay learns nothing.
+              throw APIError.from('UNAUTHORIZED', {
+                code: 'INVALID_CODE',
+                message: 'Invalid code',
+              });
+            }
+            return;
+          }
           case '/sign-in/email': {
             const email = field(ctx.body, 'email');
             if (!email) return;
@@ -205,6 +246,20 @@ export function createAuth(
         if (ctx.path === '/sign-in/email') {
           const email = field(ctx.body, 'email');
           if (!email) return;
+          if (
+            verifyEmail &&
+            isAPIError(returned) &&
+            (returned.body as { code?: string } | undefined)?.code ===
+              'EMAIL_NOT_VERIFIED'
+          ) {
+            // F-03: an unverified account answers exactly like a wrong password (the owner
+            // has just been sent a fresh verification link).
+            await throttle.recordFailure(email, clientIp(ctx.headers));
+            throw APIError.from('UNAUTHORIZED', {
+              code: 'INVALID_EMAIL_OR_PASSWORD',
+              message: 'Invalid email or password',
+            });
+          }
           if (isAPIError(returned)) {
             if (returned.statusCode === 401) {
               const ip = clientIp(ctx.headers);
@@ -232,6 +287,12 @@ export function createAuth(
           const password = field(ctx.body, 'password');
           if (password) await upgradeHash(prisma, email, password);
           return;
+        }
+        if (ctx.path === '/two-factor/verify-totp' && isAPIError(returned)) {
+          // A rejected code must not stay reserved (a typo never blocks the right code).
+          const code = field(ctx.body, 'code');
+          const userId = code ? await twoFactorUserId(ctx) : null;
+          if (code && userId) await totpReplay.release(userId, code);
         }
         if (
           (ctx.path === '/two-factor/verify-totp' ||
@@ -265,7 +326,13 @@ export function createAuth(
       minPasswordLength: PASSWORD_MIN_LENGTH,
       maxPasswordLength: PASSWORD_MAX_LENGTH,
       password: { hash: hashPassword, verify: verifyPassword },
-      requireEmailVerification: false,
+      requireEmailVerification: verifyEmail,
+      // F-03: an existing address gets this email instead of an error in the response.
+      onExistingUserSignUp: ({ user }) =>
+        sendInBackground(
+          email,
+          accountExistsEmail(user.email, `${appUrl}/login`),
+        ),
       revokeSessionsOnPasswordReset: true,
       resetPasswordTokenExpiresIn: RESET_TOKEN_TTL_SECONDS,
       sendResetPassword: ({ user, token }) =>
@@ -279,6 +346,8 @@ export function createAuth(
     },
     emailVerification: {
       sendOnSignUp: email.enabled,
+      // With verification required, a sign-in attempt by an unverified owner resends the link.
+      sendOnSignIn: verifyEmail,
       expiresIn: VERIFICATION_TOKEN_TTL_SECONDS,
       sendVerificationEmail: ({ user, token }) =>
         sendInBackground(
