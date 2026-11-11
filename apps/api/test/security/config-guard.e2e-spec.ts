@@ -16,6 +16,9 @@ const safe = {
   CORS_ORIGINS: 'https://app.example.com',
   FIELD_ENCRYPTION_KEYS: `k1:${randomBytes(32).toString('base64')}`,
   FIELD_ENCRYPTION_ACTIVE_KEY: 'k1',
+  EMAIL_PROVIDER: 'resend',
+  EMAIL_FROM: 'Pregnancy Care <test@example.test>',
+  RESEND_API_KEY: 'test-placeholder',
 };
 
 describe('Security: production configuration guard', () => {
@@ -89,6 +92,16 @@ describe('Security: production configuration guard', () => {
       'FIELD_ENCRYPTION_KEYS',
     ],
     ['trusting every proxy hop', { TRUST_PROXY: 'true' }, 'TRUST_PROXY'],
+    [
+      'sign-up enumeration protection off',
+      { AUTH_REQUIRE_EMAIL_VERIFICATION: 'false' },
+      'AUTH_REQUIRE_EMAIL_VERIFICATION',
+    ],
+    [
+      'no email provider (needed for verification)',
+      { EMAIL_PROVIDER: 'none' },
+      'AUTH_REQUIRE_EMAIL_VERIFICATION',
+    ],
     [
       'the in-memory test email provider',
       { EMAIL_PROVIDER: 'memory' },

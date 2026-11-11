@@ -109,4 +109,17 @@ describe('Security: headers and caching (e2e)', () => {
       expect(res.headers.etag).toBeUndefined();
     });
   });
+
+  describe('email-dependent auth routes', () => {
+    it.each([
+      '/v1/auth/request-password-reset',
+      '/v1/auth/reset-password',
+      '/v1/auth/send-verification-email',
+    ])(
+      'answers 404 for %s when no email provider is configured',
+      async (path) => {
+        await http.post(path).set('Origin', ALLOWED).send({}).expect(404);
+      },
+    );
+  });
 });

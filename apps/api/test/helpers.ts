@@ -1,5 +1,5 @@
 import 'dotenv/config';
-import { randomUUID } from 'node:crypto';
+import { randomBytes, randomUUID } from 'node:crypto';
 import type { INestApplication, Type } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import type { StaffRole } from '@preconception/contracts';
@@ -15,6 +15,25 @@ import type { PrismaService } from '../src/database/prisma.service.js';
  * Rate limiting is off by default because every test request comes from one IP;
  * rate-limit.e2e-spec.ts turns it back on.
  */
+/**
+ * A configuration production accepts, for production-mode suites. Email is "resend" with a
+ * placeholder key, but createTestApp swaps in the in-memory sender, so nothing is sent.
+ */
+export function productionEnv(): Record<string, string> {
+  return {
+    NODE_ENV: 'production',
+    BETTER_AUTH_SECRET: randomBytes(32).toString('base64'),
+    RATE_LIMIT_ENABLED: 'true',
+    ADMIN_REQUIRE_MFA: 'true',
+    BETTER_AUTH_URL: 'https://api.example.test',
+    APP_URL: 'https://app.example.test',
+    CORS_ORIGINS: 'https://app.example.test',
+    EMAIL_PROVIDER: 'resend',
+    EMAIL_FROM: 'Pregnancy Care <test@example.test>',
+    RESEND_API_KEY: 'test-placeholder-never-used',
+  };
+}
+
 /** Test-only field-encryption keys (synthetic data only). */
 export const TEST_FIELD_KEYS = `t1:${Buffer.alloc(32, 7).toString('base64')},t0:${Buffer.alloc(32, 3).toString('base64')}`;
 
@@ -40,10 +59,20 @@ export async function createTestApp(
   });
   const { AppModule } = await import('../src/app.module.js');
   const { setupApp } = await import('../src/setup-app.js');
-  const moduleFixture = await Test.createTestingModule({
+  const { EMAIL_SENDER, MemoryEmailSender } =
+    await import('../src/email/email-sender.js');
+  let builder = Test.createTestingModule({
     imports: [AppModule],
     controllers: extraControllers,
-  }).compile();
+  });
+  // Tests never reach a real email service: a suite that configures Resend (to run the
+  // production configuration) gets the in-memory sender in its place.
+  if (process.env.EMAIL_PROVIDER === 'resend') {
+    builder = builder
+      .overrideProvider(EMAIL_SENDER)
+      .useValue(new MemoryEmailSender());
+  }
+  const moduleFixture = await builder.compile();
   const app = moduleFixture.createNestApplication<INestApplication<App>>();
   await setupApp(app);
   await app.init();
@@ -65,18 +94,37 @@ export function uniqueEmail(label = 'user'): string {
   return `${label}-${randomUUID()}@example.test`;
 }
 
-/** Signs up a new user through Better Auth and returns bearer credentials. */
+/**
+ * Signs up a new user through Better Auth and returns bearer credentials. When the app requires
+ * email verification (production configuration, F-03) sign-up starts no session: the test
+ * marks the address verified, as the emailed link would, and signs in.
+ */
 export async function signUp(
   app: INestApplication<App>,
   email = uniqueEmail(),
 ): Promise<Auth & { id: string; email: string }> {
-  const res = await request(app.getHttpServer())
+  const http = request(app.getHttpServer());
+  const res = await http
     .post('/v1/auth/sign-up/email')
     .send({ email, password: PASSWORD, name: 'Test Person' })
     .expect(200);
-  const token = res.headers['set-auth-token'];
+  let token = res.headers['set-auth-token'];
+  let id: string = res.body.user.id;
+  if (!token) {
+    const prisma = await getPrisma(app);
+    const user = await prisma.user.update({
+      where: { email },
+      data: { emailVerified: true },
+    });
+    id = user.id;
+    const signedIn = await http
+      .post('/v1/auth/sign-in/email')
+      .send({ email, password: PASSWORD })
+      .expect(200);
+    token = signedIn.headers['set-auth-token'];
+  }
   if (!token) throw new Error('sign-up returned no set-auth-token header');
-  return { authorization: `Bearer ${token}`, id: res.body.user.id, email };
+  return { authorization: `Bearer ${token}`, id, email };
 }
 
 /** Starts an anonymous session and returns its credentials. */

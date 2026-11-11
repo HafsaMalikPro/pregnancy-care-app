@@ -89,6 +89,9 @@ describe('validateEnv', () => {
       // Production also checks secret quality (see "production secret quality").
       BETTER_AUTH_SECRET: randomBytes(32).toString('base64'),
       NODE_ENV: 'production',
+      EMAIL_PROVIDER: 'resend',
+      EMAIL_FROM: 'Pregnancy Care <test@example.test>',
+      RESEND_API_KEY: 'test-placeholder',
       FIELD_ENCRYPTION_KEYS: `k1:${randomBytes(32).toString('base64')}`,
       FIELD_ENCRYPTION_ACTIVE_KEY: 'k1',
       BETTER_AUTH_URL: 'https://api.example.com',
@@ -231,6 +234,9 @@ describe('validateEnv', () => {
     const prod = {
       ...base,
       NODE_ENV: 'production',
+      EMAIL_PROVIDER: 'resend',
+      EMAIL_FROM: 'Pregnancy Care <test@example.test>',
+      RESEND_API_KEY: 'test-placeholder',
       FIELD_ENCRYPTION_KEYS: `k1:${randomBytes(32).toString('base64')}`,
       FIELD_ENCRYPTION_ACTIVE_KEY: 'k1',
       BETTER_AUTH_URL: 'https://api.example.com',

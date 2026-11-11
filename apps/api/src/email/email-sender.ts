@@ -5,7 +5,7 @@ export interface EmailMessage {
   subject: string;
   text: string;
   /** Short machine-readable kind for logs and provider tags; never personal data. */
-  tag: 'password_reset' | 'email_verification' | 'reminder';
+  tag: 'password_reset' | 'email_verification' | 'account_exists' | 'reminder';
   /**
    * Same key = same message. A retry after a timeout (where the provider may already have
    * accepted the first attempt) is then delivered once, not twice. No personal data.

@@ -1,4 +1,5 @@
 import { INestApplication, VersioningType } from '@nestjs/common';
+import type { CorsOptions } from '@nestjs/common/interfaces/external/cors-options.interface.js';
 import { ConfigService } from '@nestjs/config';
 import { SwaggerModule } from '@nestjs/swagger';
 import { toNodeHandler } from 'better-auth/node';
@@ -33,11 +34,27 @@ export async function setupApp(app: INestApplication): Promise<void> {
   // Registered before init() adds the body parser, so parser errors get a request id too.
   app.use(requestIdMiddleware);
   app.use(clientIpMiddleware);
-  app.enableCors({
-    origin: config.get('CORS_ORIGINS', { infer: true }),
-    credentials: true,
-    exposedHeaders: ['x-request-id', 'set-auth-token'],
-  });
+  // Credentialed CORS only for the exact allowed origins. A refused origin gets no CORS
+  // headers at all: the cors package would otherwise still send Allow-Credentials (F-05).
+  const allowedOrigins = new Set(config.get('CORS_ORIGINS', { infer: true }));
+  app.enableCors(
+    (
+      req: Request,
+      callback: (err: Error | null, options: CorsOptions) => void,
+    ) => {
+      const origin = req.header('origin');
+      callback(
+        null,
+        origin && allowedOrigins.has(origin)
+          ? {
+              origin: true,
+              credentials: true,
+              exposedHeaders: ['x-request-id', 'set-auth-token'],
+            }
+          : { origin: false },
+      );
+    },
+  );
   const security = app.get(SecurityEventsService);
   // Every 429 (Nest throttler, Better Auth limiter, sign-in lockout) becomes one security
   // event per client and route per minute.
