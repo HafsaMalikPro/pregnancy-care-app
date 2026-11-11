@@ -1,0 +1,10 @@
+pnpm-lock.yaml
+dist
+**/src/generated
+migrations
+*.md
+docs/api/openapi.json
+tests/load/results/
+
+# Generated security-scan output (ZAP), kept as evidence verbatim.
+docs/pentest/

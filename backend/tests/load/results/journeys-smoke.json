@@ -1,0 +1,376 @@
+{
+    "root_group": {
+        "path": "",
+        "id": "d41d8cd98f00b204e9800998ecf8427e",
+        "groups": {},
+        "checks": {
+                "public reads ok": {
+                    "name": "public reads ok",
+                    "path": "::public reads ok",
+                    "id": "af7a66464fa5df959503f1a6ba9c1e0b",
+                    "passes": 986,
+                    "fails": 0
+                },
+                "dashboard ok": {
+                    "id": "3c5d3b3a3e454c592d2489fc7022dfd4",
+                    "passes": 1118,
+                    "fails": 0,
+                    "name": "dashboard ok",
+                    "path": "::dashboard ok"
+                },
+                "article ok": {
+                    "name": "article ok",
+                    "path": "::article ok",
+                    "id": "aec5adee013ca5c32e52972b5cd25ce1",
+                    "passes": 986,
+                    "fails": 0
+                },
+                "writes ok": {
+                    "name": "writes ok",
+                    "path": "::writes ok",
+                    "id": "524d4106043145950c41bbeb4c21693f",
+                    "passes": 291,
+                    "fails": 0
+                },
+                "sign-in ok": {
+                    "path": "::sign-in ok",
+                    "id": "65eb7ff364be485c9d028555f07f2e44",
+                    "passes": 30,
+                    "fails": 0,
+                    "name": "sign-in ok"
+                }
+            },
+        "name": ""
+    },
+    "metrics": {
+        "http_req_duration{group:signin}": {
+            "p(95)": 112.95059999999998,
+            "p(99)": 172.86257999999998,
+            "max": 194.409,
+            "avg": 88.74306666666668,
+            "min": 69.158,
+            "med": 79.791,
+            "p(90)": 103.07039999999999,
+            "thresholds": {
+                "p(95)<1000": false
+            }
+        },
+        "http_req_duration{group:write}": {
+            "max": 158.828,
+            "avg": 10.901381443298975,
+            "min": 3.124,
+            "med": 6.506,
+            "p(90)": 16.526300000000003,
+            "p(95)": 25.30774999999996,
+            "p(99)": 135.94109,
+            "thresholds": {
+                "p(95)<500": false
+            }
+        },
+        "vus_max": {
+            "value": 210,
+            "min": 210,
+            "max": 210
+        },
+        "http_req_duration{group:public}": {
+            "max": 225.776,
+            "avg": 6.5427129817444305,
+            "min": 0.906,
+            "med": 3.699,
+            "p(90)": 10.0066,
+            "p(95)": 16.44619999999995,
+            "p(99)": 64.45467,
+            "thresholds": {
+                "p(95)<300": false
+            }
+        },
+        "http_reqs": {
+            "count": 9222,
+            "rate": 139.32278911714673
+        },
+        "http_req_connecting": {
+            "p(99)": 0.5561599999999998,
+            "max": 5.161,
+            "avg": 0.0350800260247235,
+            "min": 0,
+            "med": 0,
+            "p(90)": 0,
+            "p(95)": 0.2909499999999996
+        },
+        "http_req_sending": {
+            "p(90)": 0.035,
+            "p(95)": 0.051,
+            "p(99)": 0.191,
+            "max": 9.34,
+            "avg": 0.027315116026891555,
+            "min": 0.002,
+            "med": 0.014
+        },
+        "http_req_duration{expected_response:true}": {
+            "max": 468.681,
+            "avg": 14.128269289617485,
+            "min": 0.906,
+            "med": 8.123999999999999,
+            "p(90)": 22.5117,
+            "p(95)": 36.21174999999996,
+            "p(99)": 128.64045999999996
+        },
+        "vus": {
+            "value": 1,
+            "min": 0,
+            "max": 200
+        },
+        "http_req_failed": {
+            "passes": 72,
+            "fails": 9150,
+            "thresholds": {
+                "rate<0.01": false
+            },
+            "value": 0.007807417046193884
+        },
+        "http_req_duration": {
+            "avg": 14.189208197787899,
+            "min": 0.906,
+            "med": 8.1525,
+            "p(90)": 22.737400000000008,
+            "p(95)": 36.84209999999994,
+            "p(99)": 128.76533999999998,
+            "max": 468.681
+        },
+        "http_req_duration{group:dashboard}": {
+            "max": 468.681,
+            "avg": 17.964358139534912,
+            "min": 3,
+            "med": 10.584,
+            "p(90)": 25.954400000000007,
+            "p(95)": 47.587399999999896,
+            "p(99)": 145.76417999999975,
+            "thresholds": {
+                "p(95)<300": false
+            }
+        },
+        "checks": {
+            "passes": 3411,
+            "fails": 0,
+            "thresholds": {
+                "rate>0.99": false
+            },
+            "value": 1
+        },
+        "data_received": {
+            "rate": 210083.8849490476,
+            "count": 13905791
+        },
+        "http_req_waiting": {
+            "p(90)": 22.631500000000003,
+            "p(95)": 36.77544999999992,
+            "p(99)": 128.69729999999996,
+            "max": 468.549,
+            "avg": 14.114172413793133,
+            "min": 0.876,
+            "med": 8.086
+        },
+        "data_sent": {
+            "count": 1745340,
+            "rate": 26367.99357598361
+        },
+        "iterations": {
+            "count": 2134,
+            "rate": 32.239734545217
+        },
+        "http_req_receiving": {
+            "min": 0.008,
+            "med": 0.034,
+            "p(90)": 0.086,
+            "p(95)": 0.109,
+            "p(99)": 0.19578999999999994,
+            "max": 2.979,
+            "avg": 0.0477206679679021
+        },
+        "http_req_tls_handshaking": {
+            "p(99)": 0,
+            "max": 0,
+            "avg": 0,
+            "min": 0,
+            "med": 0,
+            "p(90)": 0,
+            "p(95)": 0
+        },
+        "iteration_duration": {
+            "max": 5911.604625,
+            "avg": 3701.2365285524834,
+            "min": 69.35775,
+            "med": 3787.5129375,
+            "p(90)": 4863.8359963,
+            "p(95)": 5041.781849999999,
+            "p(99)": 5522.83130211
+        },
+        "http_req_blocked": {
+            "max": 14.22,
+            "avg": 0.06508479722402581,
+            "min": 0,
+            "med": 0.007,
+            "p(90)": 0.1,
+            "p(95)": 0.362,
+            "p(99)": 0.7691099999999993
+        }
+    },
+    "setup_data": {
+        "articles": [
+            "first-trimester-tests",
+            "folic-acid-why-it-matters",
+            "morning-sickness-relief",
+            "safe-exercise-pregnancy",
+            "partner-support-pregnancy"
+        ],
+        "taskIds": [
+            "01a1874b-0f82-7254-84d3-badd405b3c13",
+            "01a1874b-0f86-72ed-a0c6-609cfffd5649",
+            "01a1874b-0f88-76d2-bfc0-01c672e69685",
+            "01a1874b-0f8b-70a9-bf18-6d597e00b132",
+            "01a1874b-0f8d-73f9-a6a9-71efa25902a5"
+        ],
+        "users": [
+            {
+                "auth": {
+                    "Authorization": "Bearer E8HyQU0uLGEitStw3Fq0sTTAyw7n45eZ.OsbpZrCbPedYjB24Y/lTpO1bMF34YnMLbCPQtMWuF+M=",
+                    "Content-Type": "application/json"
+                },
+                "email": "load-1793271299455-0@example.test"
+            },
+            {
+                "auth": {
+                    "Authorization": "Bearer v4cz8DFnr35DiLOyA6nMPyu7MixZja9k.rrgp1fAtuUcUFE9ommm+hr0xcjDq9e4If6i7YNCSw7A=",
+                    "Content-Type": "application/json"
+                },
+                "email": "load-1793271299455-1@example.test"
+            },
+            {
+                "auth": {
+                    "Authorization": "Bearer ly9CowNfxDojVPVkHknHBDxuIb8ImcTN.Ow6SeCyxXunD/BuwWqZv/OfbyUr1gd1tZplkYNwr5QA=",
+                    "Content-Type": "application/json"
+                },
+                "email": "load-1793271299455-2@example.test"
+            },
+            {
+                "auth": {
+                    "Authorization": "Bearer D5xHMNIfVHkFPGWtVghIgJiwZDjOCOem.ceKQFnWf8pEl4q6wVtXGXKe7IyN5b0myEBNOwqwW9Pk=",
+                    "Content-Type": "application/json"
+                },
+                "email": "load-1793271299455-3@example.test"
+            },
+            {
+                "auth": {
+                    "Content-Type": "application/json",
+                    "Authorization": "Bearer Eajv8mkcac3R1efqdlH0d5BfwVGjAs7J.7+GiY0kEUWxuNvtCzg+Jd1R7tcHrwXBQTITXzsIWAdA="
+                },
+                "email": "load-1793271299455-4@example.test"
+            },
+            {
+                "auth": {
+                    "Authorization": "Bearer sGFgFPU6kafSy4b7qtpDPY0U2koAqwhE.EJBrhvjIgTw0isrvpPc3f6qqW6xH71DQV8Gz6gXj5VY=",
+                    "Content-Type": "application/json"
+                },
+                "email": "load-1793271299455-5@example.test"
+            },
+            {
+                "auth": {
+                    "Authorization": "Bearer 0f8yiJVsTRwjJrXxut5UV6Kyc4bDYk81.cFrfV91G9oXDVLSISIxxiiUy46k2K9/MJcMathQNJJU=",
+                    "Content-Type": "application/json"
+                },
+                "email": "load-1793271299455-6@example.test"
+            },
+            {
+                "auth": {
+                    "Authorization": "Bearer V439Jv9ok8oVGeU9rav3t7soFBs0O1NE.jMjMnIXTmirfYFw4kZ7dHl83jLAxa7/soqlDC6I8TzQ=",
+                    "Content-Type": "application/json"
+                },
+                "email": "load-1793271299455-7@example.test"
+            },
+            {
+                "auth": {
+                    "Authorization": "Bearer NMoBYEC1nFs5efNSJx6xbpAA3e1kP0R9.eAC2cOU9veHC1FsSZ7sdG4E2LsrQ4r9oL/DMwycSj50=",
+                    "Content-Type": "application/json"
+                },
+                "email": "load-1793271299455-8@example.test"
+            },
+            {
+                "auth": {
+                    "Authorization": "Bearer qaWj20bQGaIjnUAheIfZBHo3FDPBlg6y.ANpMWZX53BPMkQAZ6x3Yr0+YxZZ9VZtstnScOOkwf6M=",
+                    "Content-Type": "application/json"
+                },
+                "email": "load-1793271299455-9@example.test"
+            },
+            {
+                "auth": {
+                    "Authorization": "Bearer svVdFalSp9As3lweOQAnnMhM0slsWA0I.gK1WZMbM37LXJACZXEzkTbR9CIL7pDRK31teikiDZgE=",
+                    "Content-Type": "application/json"
+                },
+                "email": "load-1793271299455-10@example.test"
+            },
+            {
+                "auth": {
+                    "Authorization": "Bearer H2FonuAAjMVTPgclRtASFb4yoELFAvMJ.GzcT/I1MSwCpX885ss62l4QDl7MWTpBMsJI7moogbwo=",
+                    "Content-Type": "application/json"
+                },
+                "email": "load-1793271299455-11@example.test"
+            },
+            {
+                "auth": {
+                    "Authorization": "Bearer ZO4JKOeqRe3XnXfzCtL4NLmussdHEWtG.ghfBcsbZFwoARLyNU5tsv8b9RvD39zU6wj9Z4yLjhUQ=",
+                    "Content-Type": "application/json"
+                },
+                "email": "load-1793271299455-12@example.test"
+            },
+            {
+                "email": "load-1793271299455-13@example.test",
+                "auth": {
+                    "Authorization": "Bearer nwADFByhncI3DMuAJX5CBRBkyZBsAHSk.ebWzj0z5mZRvPl6LNhiYY/X9REq7Lnz4iZk1DfDww0I=",
+                    "Content-Type": "application/json"
+                }
+            },
+            {
+                "auth": {
+                    "Authorization": "Bearer wSbFKIadsYzY7XSHtbchH1OsJeCPVL1a.AouZ7cAAst0HNtegPsEtvXZl7njdmjgYzDEQHAoZs8Q=",
+                    "Content-Type": "application/json"
+                },
+                "email": "load-1793271299455-14@example.test"
+            },
+            {
+                "auth": {
+                    "Authorization": "Bearer fO9sFBhLmV0JQpHh87aTHJvQT26k1RSy.f2swSburmyAJuchQHyqKBNmZ1GCa4yYNYl5bitl59zE=",
+                    "Content-Type": "application/json"
+                },
+                "email": "load-1793271299455-15@example.test"
+            },
+            {
+                "auth": {
+                    "Authorization": "Bearer 6ux5xfx2LsRyPEA7qRg9uQrzRvFK9jVV.qp5H7qmP5xpQi6U2gz78McX0RFTpbPpt3McMcCyANUA=",
+                    "Content-Type": "application/json"
+                },
+                "email": "load-1793271299455-16@example.test"
+            },
+            {
+                "auth": {
+                    "Content-Type": "application/json",
+                    "Authorization": "Bearer TvBsSjOEVpXnGliH1R2Ak7TjNvOSHkpW.slihidzcnaKkjwazMoF9674bxRi2c6mOdZyMKVzAb5s="
+                },
+                "email": "load-1793271299455-17@example.test"
+            },
+            {
+                "auth": {
+                    "Authorization": "Bearer GKGdQmEjjkBKdAohaIkDyUiOTTxHrEy5.Jf+M81AimxOUHv87kZDloI8ksgrmRlWH32uTTc4brYU=",
+                    "Content-Type": "application/json"
+                },
+                "email": "load-1793271299455-18@example.test"
+            },
+            {
+                "auth": {
+                    "Content-Type": "application/json",
+                    "Authorization": "Bearer UDwa2B0kv3m3vEYQzSoZvkbwAMCl6v0Q.6JM4qMF8rv6foYhTHeK5tR3Uuv9gDJ3JYGlMcxk1TQ4="
+                },
+                "email": "load-1793271299455-19@example.test"
+            }
+        ]
+    }
+}

@@ -1,0 +1,17 @@
+# Secret scanning (CI and the pre-commit hook in scripts/git-hooks/pre-commit).
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Synthetic, documented non-secrets"
+paths = [
+  # Generated list of publicly known breached passwords, used to refuse them.
+  '''apps/api/src/auth/breached-passwords\.data\.ts''',
+  '''pnpm-lock\.yaml''',
+]
+regexes = [
+  # The local Docker Postgres and CI service password (dev-only, documented).
+  '''preconception_(local|ci)''',
+  # The CI app's throwaway auth secret (production refuses it).
+  '''ci-only-not-a-secret-[0-9a-f]+''',
+]

@@ -1,0 +1,24 @@
+{
+  "kind": "recipe",
+  "slug": "<lowercase-hyphenated-slug>",
+  "locale": "en",
+  "title": "<Recipe name>",
+  "summary": "<One sentence>",
+  "category": "nutrition",
+  "trimester": null,
+  "tags": [],
+  "sections": {
+    "mealSlots": ["lunch"],
+    "servings": 2,
+    "prepMinutes": null,
+    "ingredients": [{ "name": "<ingredient>", "quantity": "<amount>", "allergens": [] }],
+    "steps": ["<Step>"],
+    "dietPatterns": ["no_restriction"],
+    "nutrients": [{ "name": "<Nutrient>", "note": "<Reviewed note, no targets>" }],
+    "foodSafetyNotes": ["<Food-safety note>"],
+    "substitutions": [],
+    "cuisine": null,
+    "media": []
+  },
+  "references": [{ "title": "<Source title>", "url": "https://example.org/<source>" }]
+}

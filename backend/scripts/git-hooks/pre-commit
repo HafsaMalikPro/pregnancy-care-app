@@ -1,0 +1,19 @@
+#!/bin/sh
+# Refuses commits that add secrets or environment files.
+# Install once: git config core.hooksPath scripts/git-hooks
+set -eu
+
+if git diff --cached --name-only | grep -Eq '(^|/)\.env($|\.)' &&
+   git diff --cached --name-only | grep -E '(^|/)\.env($|\.)' | grep -vq '\.env\.example$'; then
+  echo "pre-commit: refusing to commit an .env file (only .env.example is tracked)." >&2
+  exit 1
+fi
+
+if command -v gitleaks >/dev/null 2>&1; then
+  gitleaks git --staged --no-banner --redact --config .gitleaks.toml
+elif command -v docker >/dev/null 2>&1 && docker info >/dev/null 2>&1; then
+  docker run --rm -v "$(pwd):/repo" -w /repo zricethezav/gitleaks:v8.30.1 \
+    git --staged --no-banner --redact --config .gitleaks.toml
+else
+  echo "pre-commit: gitleaks not found (install it, or run Docker) - secret scan skipped." >&2
+fi

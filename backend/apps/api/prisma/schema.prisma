@@ -1,0 +1,968 @@
+// Data model for the preconception platform.
+//
+// Rules (see docs/architecture/data-model.md):
+// - UUID keys everywhere; period dates use DATE, instants use timestamptz.
+// - Health data (cycles, daily_logs, notes) never appears in audit_events or analytics.
+// - Every user-owned row belongs to exactly one owner: a registered user OR an anonymous session.
+// - The auth tables (users, auth_sessions, auth_accounts, auth_verifications) follow the
+//   Better Auth core schema; reconcile with `npx @better-auth/cli generate` when auth lands (Day 2).
+
+generator client {
+  provider     = "prisma-client"
+  output       = "../src/generated/prisma"
+  moduleFormat = "esm"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ---------------------------------------------------------------------------
+// Identity
+// ---------------------------------------------------------------------------
+
+enum AccountStatus {
+  active
+  pending_deletion
+  deleted
+}
+
+enum StaffRole {
+  support
+  content_editor
+  clinical_reviewer
+  administrator
+}
+
+model User {
+  id               String        @id @default(uuid(7)) @db.Uuid
+  email            String        @unique
+  emailVerified    Boolean       @default(false) @map("email_verified")
+  name             String?
+  image            String?
+  status           AccountStatus @default(active)
+  /// Null for ordinary users. Staff roles are granted only through audited admin actions.
+  staffRole        StaffRole?    @map("staff_role")
+  twoFactorEnabled Boolean       @default(false) @map("two_factor_enabled")
+  createdAt        DateTime      @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt        DateTime      @updatedAt @map("updated_at") @db.Timestamptz
+  deletedAt        DateTime?     @map("deleted_at") @db.Timestamptz
+
+  authSessions    AuthSession[]
+  authAccounts    AuthAccount[]
+  profile         Profile?
+  cycles          Cycle[]
+  pregnancies     Pregnancy[]
+  dailyLogs       DailyLog[]
+  taskProgress    UserTaskProgress[]
+  consentRecords  ConsentRecord[]
+  reminders       Reminder[]
+  subscriptions   Subscription[]
+  privacyJobs     PrivacyJob[]
+  linkedAnonymous AnonymousSession[]
+  contentReviews  ContentReview[]
+  twoFactors      TwoFactor[]
+  appointments    Appointment[]
+  mealLogs        MealLog[]
+  activityLogs    ActivityLog[]
+  savedContent    SavedContent[]
+  shoppingItems   ShoppingItem[]
+  planCompletions PlanTaskCompletion[]
+  symptomChecks   SymptomCheck[]
+  kickSessions    KickSession[]
+  contractions    Contraction[]
+  weightEntries   WeightEntry[]
+
+  @@map("users")
+}
+
+model AuthSession {
+  id        String   @id @default(uuid(7)) @db.Uuid
+  userId    String   @map("user_id") @db.Uuid
+  token     String   @unique
+  expiresAt DateTime @map("expires_at") @db.Timestamptz
+  ipAddress String?  @map("ip_address")
+  userAgent String?  @map("user_agent")
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("auth_sessions")
+}
+
+model AuthAccount {
+  id                    String    @id @default(uuid(7)) @db.Uuid
+  userId                String    @map("user_id") @db.Uuid
+  accountId             String    @map("account_id")
+  providerId            String    @map("provider_id")
+  accessToken           String?   @map("access_token")
+  refreshToken          String?   @map("refresh_token")
+  idToken               String?   @map("id_token")
+  accessTokenExpiresAt  DateTime? @map("access_token_expires_at") @db.Timestamptz
+  refreshTokenExpiresAt DateTime? @map("refresh_token_expires_at") @db.Timestamptz
+  scope                 String?
+  /// Password hash managed by Better Auth. Never read or logged by application code.
+  password              String?
+  createdAt             DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt             DateTime  @updatedAt @map("updated_at") @db.Timestamptz
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([providerId, accountId])
+  @@index([userId])
+  @@map("auth_accounts")
+}
+
+/// Sign-in lockout counters. `key` is "acct:<sha256 of email>" or "ip:<address>".
+model AuthThrottle {
+  key             String    @id
+  failures        Int       @default(0)
+  windowStartedAt DateTime  @default(now()) @map("window_started_at") @db.Timestamptz
+  lockedUntil     DateTime? @map("locked_until") @db.Timestamptz
+  updatedAt       DateTime  @default(now()) @map("updated_at") @db.Timestamptz
+
+  @@index([updatedAt])
+  @@map("auth_throttles")
+}
+
+model AuthVerification {
+  id         String   @id @default(uuid(7)) @db.Uuid
+  identifier String
+  value      String
+  expiresAt  DateTime @map("expires_at") @db.Timestamptz
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt  DateTime @updatedAt @map("updated_at") @db.Timestamptz
+
+  @@index([identifier])
+  @@map("auth_verifications")
+}
+
+/// Better Auth two-factor plugin (TOTP + backup codes). Required for staff accounts.
+model TwoFactor {
+  id                      String    @id @default(uuid(7)) @db.Uuid
+  userId                  String    @map("user_id") @db.Uuid
+  /// Encrypted by Better Auth. Never read or logged by application code.
+  secret                  String
+  backupCodes             String    @map("backup_codes")
+  verified                Boolean   @default(true)
+  failedVerificationCount Int       @default(0) @map("failed_verification_count")
+  lockedUntil             DateTime? @map("locked_until") @db.Timestamptz
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([secret])
+  @@map("two_factors")
+}
+
+/// Installation-scoped anonymous use. The client holds a random secret; only its hash is stored.
+model AnonymousSession {
+  id             String    @id @default(uuid(7)) @db.Uuid
+  credentialHash String    @unique @map("credential_hash")
+  platform       String
+  /// Set only after an explicit, authenticated migration into a registered account.
+  linkedUserId   String?   @map("linked_user_id") @db.Uuid
+  linkedAt       DateTime? @map("linked_at") @db.Timestamptz
+  lastSeenAt     DateTime  @default(now()) @map("last_seen_at") @db.Timestamptz
+  /// Retention limit for inactive anonymous data.
+  expiresAt      DateTime  @map("expires_at") @db.Timestamptz
+  createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz
+
+  linkedUser      User?                @relation(fields: [linkedUserId], references: [id], onDelete: SetNull)
+  profile         Profile?
+  cycles          Cycle[]
+  pregnancies     Pregnancy[]
+  dailyLogs       DailyLog[]
+  taskProgress    UserTaskProgress[]
+  consentRecords  ConsentRecord[]
+  reminders       Reminder[]
+  appointments    Appointment[]
+  mealLogs        MealLog[]
+  activityLogs    ActivityLog[]
+  savedContent    SavedContent[]
+  shoppingItems   ShoppingItem[]
+  planCompletions PlanTaskCompletion[]
+  symptomChecks   SymptomCheck[]
+  kickSessions    KickSession[]
+  contractions    Contraction[]
+  weightEntries   WeightEntry[]
+
+  @@index([expiresAt])
+  @@map("anonymous_sessions")
+}
+
+// ---------------------------------------------------------------------------
+// Core product (user-owned; exactly one of userId / anonymousSessionId is set —
+// enforced by CHECK constraints in the migration)
+// ---------------------------------------------------------------------------
+
+model Profile {
+  id                    String   @id @default(uuid(7)) @db.Uuid
+  userId                String?  @unique @map("user_id") @db.Uuid
+  anonymousSessionId    String?  @unique @map("anonymous_session_id") @db.Uuid
+  timeZone              String   @default("UTC") @map("time_zone")
+  locale                String   @default("en")
+  /// Months until the user hopes to start trying, if they chose to share it.
+  planningHorizonMonths Int?     @map("planning_horizon_months") @db.SmallInt
+  /// ISO 3166-1 alpha-2, e.g. "PK". Selects emergency numbers, visit templates and foods.
+  countryCode           String?  @map("country_code")
+  /// Values from the contracts' DietPattern list; validated by the API.
+  dietPattern           String?  @map("diet_pattern")
+  /// Values from the contracts' FoodAllergy list.
+  foodAllergies         String[] @default([]) @map("food_allergies")
+  /// low | moderate | high
+  activityLevel         String?  @map("activity_level")
+  /// Foods that disagree with the user (not allergies), e.g. "lactose". Free tags, max 20.
+  foodIntolerances      String[] @default([]) @map("food_intolerances")
+  /// Foods the user chooses not to eat for any reason. Free tags, max 30.
+  excludedFoods         String[] @default([]) @map("excluded_foods")
+  /// Preferred cuisines, e.g. "south_asian". Free tags, max 10. Ranks meal plans, never filters safety.
+  cuisinePreferences    String[] @default([]) @map("cuisine_preferences")
+  /// Content categories the user wants to see more of (contracts' ContentCategory).
+  contentTopics         String[] @default([]) @map("content_topics")
+  reducedMotion         Boolean  @default(false) @map("reduced_motion")
+  largerText            Boolean  @default(false) @map("larger_text")
+  /// Local "HH:MM" quiet-hours window for reminder emails; both null = none. May cross midnight.
+  quietHoursStart       String?  @map("quiet_hours_start")
+  quietHoursEnd         String?  @map("quiet_hours_end")
+  /// Opt-in. Weight entries are accepted only while true.
+  weightTrackingEnabled Boolean  @default(false) @map("weight_tracking_enabled")
+  createdAt             DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt             DateTime @updatedAt @map("updated_at") @db.Timestamptz
+
+  user             User?             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  anonymousSession AnonymousSession? @relation(fields: [anonymousSessionId], references: [id], onDelete: Cascade)
+
+  @@map("profiles")
+}
+
+/// One recorded period. Overlap policy: the API rejects an entry overlapping an existing one
+/// with CONFLICT; corrections are edits of the existing row, not new rows.
+model Cycle {
+  id                 String    @id @default(uuid(7)) @db.Uuid
+  userId             String?   @map("user_id") @db.Uuid
+  anonymousSessionId String?   @map("anonymous_session_id") @db.Uuid
+  periodStart        DateTime  @map("period_start") @db.Date
+  periodEnd          DateTime? @map("period_end") @db.Date
+  createdAt          DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt          DateTime  @updatedAt @map("updated_at") @db.Timestamptz
+
+  user             User?             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  anonymousSession AnonymousSession? @relation(fields: [anonymousSessionId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, periodStart])
+  @@unique([anonymousSessionId, periodStart])
+  @@index([userId, periodStart(sort: Desc)])
+  @@index([anonymousSessionId, periodStart(sort: Desc)])
+  @@map("cycles")
+}
+
+model DailyLog {
+  id                 String   @id @default(uuid(7)) @db.Uuid
+  userId             String?  @map("user_id") @db.Uuid
+  anonymousSessionId String?  @map("anonymous_session_id") @db.Uuid
+  date               DateTime @db.Date
+  /// Structured symptom codes from a fixed vocabulary, not free text.
+  symptoms           String[]
+  note               String?
+  /// Self-reported mood code (contracts' MoodCode). Health data: never logged.
+  mood               String?
+  sleepMinutes       Int?     @map("sleep_minutes") @db.SmallInt
+  /// Glasses of water or other drinks, as counted by the user. No target is implied.
+  waterGlasses       Int?     @map("water_glasses") @db.SmallInt
+  activityMinutes    Int?     @map("activity_minutes") @db.SmallInt
+  /// Questions the user wants to ask a clinician. Health data: never logged.
+  questions          String?
+  createdAt          DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt          DateTime @updatedAt @map("updated_at") @db.Timestamptz
+
+  user             User?             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  anonymousSession AnonymousSession? @relation(fields: [anonymousSessionId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, date])
+  @@unique([anonymousSessionId, date])
+  @@map("daily_logs")
+}
+
+// ---------------------------------------------------------------------------
+// Preparation plan and content
+// ---------------------------------------------------------------------------
+
+enum ContentStatus {
+  draft
+  in_review
+  approved
+  published
+  archived
+}
+
+model ReadinessTask {
+  id          String        @id @default(uuid(7)) @db.Uuid
+  key         String        @unique
+  locale      String        @default("en")
+  title       String
+  description String
+  category    String
+  sortOrder   Int           @default(0) @map("sort_order")
+  premium     Boolean       @default(false)
+  status      ContentStatus @default(draft)
+  /// Pregnancy weeks when the task is most relevant (both null = any time). Due-date aware plans
+  /// use this window; it never hides a task.
+  fromWeek    Int?          @map("from_week") @db.SmallInt
+  toWeek      Int?          @map("to_week") @db.SmallInt
+  articleId   String?       @map("article_id") @db.Uuid
+  createdAt   DateTime      @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt   DateTime      @updatedAt @map("updated_at") @db.Timestamptz
+
+  article  Article?           @relation(fields: [articleId], references: [id], onDelete: SetNull)
+  progress UserTaskProgress[]
+
+  @@map("readiness_tasks")
+}
+
+model UserTaskProgress {
+  id                 String    @id @default(uuid(7)) @db.Uuid
+  userId             String?   @map("user_id") @db.Uuid
+  anonymousSessionId String?   @map("anonymous_session_id") @db.Uuid
+  taskId             String    @map("task_id") @db.Uuid
+  completedAt        DateTime? @map("completed_at") @db.Timestamptz
+  /// Personal notes and questions for a clinician. Health data: never logged.
+  note               String?
+  createdAt          DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt          DateTime  @updatedAt @map("updated_at") @db.Timestamptz
+
+  user             User?             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  anonymousSession AnonymousSession? @relation(fields: [anonymousSessionId], references: [id], onDelete: Cascade)
+  task             ReadinessTask     @relation(fields: [taskId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, taskId])
+  @@unique([anonymousSessionId, taskId])
+  @@map("user_task_progress")
+}
+
+/// One row per article version. The published version for a (slug, locale) is the row with
+/// status = published; previous versions stay for history and rollback.
+enum ContentKind {
+  article
+  week_guide
+  recipe
+  activity
+  meal_plan
+  visit_schedule
+  postpartum_guide
+}
+
+model Article {
+  id            String        @id @default(uuid(7)) @db.Uuid
+  /// Week guides use the slug "pregnancy-week-<week>" (enforced by a CHECK constraint).
+  kind          ContentKind   @default(article)
+  slug          String
+  locale        String        @default("en")
+  version       Int
+  /// Pregnancy week 1-42 for week guides; null for ordinary articles.
+  week          Int?          @db.SmallInt
+  /// Structured fields: WeekGuideSections, RecipeSections, ActivitySections or MealPlanSections
+  /// in contracts, by kind; null for plain articles.
+  sections      Json?
+  /// Contracts' ContentCategory; required for articles, recipes and activities (API-enforced).
+  category      String?
+  /// 1-3 when the content is specific to one trimester; null when it applies throughout.
+  trimester     Int?          @db.SmallInt
+  /// Lower-case filter tags, e.g. allergen-free markers or diet patterns. Max 20.
+  tags          String[]      @default([])
+  title         String
+  summary       String
+  body          String
+  references    Json          @default("[]")
+  premium       Boolean       @default(false)
+  status        ContentStatus @default(draft)
+  publishedAt   DateTime?     @map("published_at") @db.Timestamptz
+  nextReviewDue DateTime?     @map("next_review_due") @db.Date
+  createdById   String?       @map("created_by_id") @db.Uuid
+  createdAt     DateTime      @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt     DateTime      @updatedAt @map("updated_at") @db.Timestamptz
+
+  reviews ContentReview[]
+  tasks   ReadinessTask[]
+
+  @@unique([slug, locale, version])
+  @@index([slug, locale, status])
+  @@index([kind, locale, week, status])
+  @@index([kind, locale, status, category])
+  @@map("articles")
+}
+
+enum ReviewDecision {
+  pending
+  approved
+  changes_requested
+}
+
+model ContentReview {
+  id                  String         @id @default(uuid(7)) @db.Uuid
+  articleId           String         @map("article_id") @db.Uuid
+  reviewerId          String         @map("reviewer_id") @db.Uuid
+  /// Reviewer credentials as displayed publicly, e.g. "MD, Obstetrics & Gynecology".
+  reviewerCredentials String         @map("reviewer_credentials")
+  decision            ReviewDecision @default(pending)
+  sources             Json           @default("[]")
+  comments            String?
+  dueAt               DateTime?      @map("due_at") @db.Date
+  reviewedAt          DateTime?      @map("reviewed_at") @db.Timestamptz
+  createdAt           DateTime       @default(now()) @map("created_at") @db.Timestamptz
+
+  article  Article @relation(fields: [articleId], references: [id], onDelete: Cascade)
+  reviewer User    @relation(fields: [reviewerId], references: [id], onDelete: Restrict)
+
+  @@index([articleId])
+  @@map("content_reviews")
+}
+
+// ---------------------------------------------------------------------------
+// Consent, reminders, subscriptions, privacy, audit
+// ---------------------------------------------------------------------------
+
+enum ConsentPurpose {
+  health_data_processing
+  product_analytics
+  marketing_email
+}
+
+/// Append-only history; the current state for a purpose is its most recent row.
+model ConsentRecord {
+  id                 String         @id @default(uuid(7)) @db.Uuid
+  userId             String?        @map("user_id") @db.Uuid
+  anonymousSessionId String?        @map("anonymous_session_id") @db.Uuid
+  purpose            ConsentPurpose
+  granted            Boolean
+  policyVersion      String         @map("policy_version")
+  source             String
+  createdAt          DateTime       @default(now()) @map("created_at") @db.Timestamptz
+
+  user             User?             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  anonymousSession AnonymousSession? @relation(fields: [anonymousSessionId], references: [id], onDelete: Cascade)
+
+  @@index([userId, purpose, createdAt(sort: Desc)])
+  @@index([anonymousSessionId, purpose, createdAt(sort: Desc)])
+  @@map("consent_records")
+}
+
+model Reminder {
+  id                 String          @id @default(uuid(7)) @db.Uuid
+  userId             String?         @map("user_id") @db.Uuid
+  anonymousSessionId String?         @map("anonymous_session_id") @db.Uuid
+  kind               String
+  enabled            Boolean         @default(true)
+  /// Local wall-clock time "HH:MM", interpreted in the profile's time zone.
+  localTime          String          @map("local_time")
+  /// iCal RRULE subset, e.g. "FREQ=WEEKLY;BYDAY=MO".
+  recurrence         String
+  /// User-chosen wording; defaults avoid health details on the lock screen.
+  label              String?
+  /// How the reminder is delivered. `none` = shown in the app only (the default).
+  channel            ReminderChannel @default(none)
+  /// Next time the scheduler should send it (UTC). Null when paused or channel is `none`.
+  nextRunAt          DateTime?       @map("next_run_at") @db.Timestamptz
+  createdAt          DateTime        @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt          DateTime        @updatedAt @map("updated_at") @db.Timestamptz
+
+  user             User?              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  anonymousSession AnonymousSession?  @relation(fields: [anonymousSessionId], references: [id], onDelete: Cascade)
+  deliveries       ReminderDelivery[]
+
+  @@index([userId])
+  @@index([anonymousSessionId])
+  @@index([nextRunAt])
+  @@map("reminders")
+}
+
+enum ReminderChannel {
+  none
+  email
+}
+
+enum ReminderDeliveryStatus {
+  pending
+  sending
+  sent
+  failed
+  skipped
+  cancelled
+}
+
+/// One scheduled send of a reminder. (reminder_id, scheduled_for) is unique, so an occurrence
+/// is never queued twice. Holds no message content: it is built from the reminder at send time.
+model ReminderDelivery {
+  id                String                 @id @default(uuid(7)) @db.Uuid
+  reminderId        String                 @map("reminder_id") @db.Uuid
+  scheduledFor      DateTime               @map("scheduled_for") @db.Timestamptz
+  channel           ReminderChannel
+  status            ReminderDeliveryStatus @default(pending)
+  attempts          Int                    @default(0)
+  nextAttemptAt     DateTime               @map("next_attempt_at") @db.Timestamptz
+  /// Machine code only (e.g. RATE_LIMITED, EMAIL_UNVERIFIED); never provider text or content.
+  lastErrorCode     String?                @map("last_error_code")
+  providerMessageId String?                @map("provider_message_id")
+  sentAt            DateTime?              @map("sent_at") @db.Timestamptz
+  createdAt         DateTime               @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt         DateTime               @updatedAt @map("updated_at") @db.Timestamptz
+
+  reminder Reminder @relation(fields: [reminderId], references: [id], onDelete: Cascade)
+
+  @@unique([reminderId, scheduledFor])
+  @@index([status, nextAttemptAt])
+  @@map("reminder_deliveries")
+}
+
+enum BillingProvider {
+  app_store
+  play_store
+  web
+}
+
+enum EntitlementState {
+  active
+  grace_period
+  expired
+  revoked
+}
+
+/// Verified entitlements only. Rows are written by the subscriptions module after
+/// server-side verification, never from client-supplied flags.
+model Subscription {
+  id               String           @id @default(uuid(7)) @db.Uuid
+  userId           String           @map("user_id") @db.Uuid
+  provider         BillingProvider
+  productId        String           @map("product_id")
+  /// Store original transaction id / web subscription id.
+  externalId       String           @map("external_id")
+  state            EntitlementState
+  currentPeriodEnd DateTime?        @map("current_period_end") @db.Timestamptz
+  autoRenew        Boolean          @default(true) @map("auto_renew")
+  environment      String           @default("sandbox")
+  createdAt        DateTime         @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt        DateTime         @updatedAt @map("updated_at") @db.Timestamptz
+
+  user   User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  events SubscriptionEvent[]
+
+  @@unique([provider, externalId])
+  @@index([userId, state])
+  @@map("subscriptions")
+}
+
+model SubscriptionEvent {
+  id              String          @id @default(uuid(7)) @db.Uuid
+  provider        BillingProvider
+  /// Provider's event/notification id — the idempotency key for replayed webhooks.
+  providerEventId String          @map("provider_event_id")
+  subscriptionId  String?         @map("subscription_id") @db.Uuid
+  type            String
+  payloadHash     String          @map("payload_hash")
+  processedAt     DateTime?       @map("processed_at") @db.Timestamptz
+  error           String?
+  receivedAt      DateTime        @default(now()) @map("received_at") @db.Timestamptz
+
+  subscription Subscription? @relation(fields: [subscriptionId], references: [id], onDelete: SetNull)
+
+  @@unique([provider, providerEventId])
+  @@map("subscription_events")
+}
+
+enum PrivacyJobKind {
+  export
+  deletion
+}
+
+enum PrivacyJobStatus {
+  requested
+  processing
+  completed
+  failed
+  cancelled
+}
+
+model PrivacyJob {
+  id          String           @id @default(uuid(7)) @db.Uuid
+  /// Nullable so the job record survives the deletion it describes.
+  userId      String?          @map("user_id") @db.Uuid
+  kind        PrivacyJobKind
+  status      PrivacyJobStatus @default(requested)
+  /// Short-lived, access-controlled location of an export bundle.
+  resultRef   String?          @map("result_ref")
+  error       String?
+  requestedAt DateTime         @default(now()) @map("requested_at") @db.Timestamptz
+  completedAt DateTime?        @map("completed_at") @db.Timestamptz
+  expiresAt   DateTime?        @map("expires_at") @db.Timestamptz
+
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([userId, kind])
+  @@index([status])
+  @@map("privacy_jobs")
+}
+
+/// Minimal security audit trail. Never store cycle dates, symptoms, notes or other
+/// health values in `metadata`.
+model AuditEvent {
+  id          String   @id @default(uuid(7)) @db.Uuid
+  actorUserId String?  @map("actor_user_id") @db.Uuid
+  actorRole   String?  @map("actor_role")
+  action      String
+  targetType  String?  @map("target_type")
+  targetId    String?  @map("target_id")
+  requestId   String?  @map("request_id")
+  metadata    Json     @default("{}")
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  @@index([actorUserId, createdAt])
+  @@index([action, createdAt])
+  @@map("audit_events")
+}
+
+// ---------------------------------------------------------------------------
+// Pregnancy (user-owned; exactly one of userId / anonymousSessionId — CHECK in migration)
+// ---------------------------------------------------------------------------
+
+enum PregnancyStatus {
+  active
+  ended
+}
+
+enum PregnancyOutcome {
+  birth
+  loss
+  other
+}
+
+enum DatingMethod {
+  lmp
+  due_date
+  ultrasound
+  ivf
+}
+
+enum DatingSource {
+  self
+  clinician
+}
+
+enum FetusCount {
+  one
+  twins
+  triplets_or_more
+  unknown
+}
+
+/// One pregnancy. At most one active per owner (partial unique indexes in the migration).
+/// `dueDate` is denormalised from the latest PregnancyDating row.
+model Pregnancy {
+  id                     String            @id @default(uuid(7)) @db.Uuid
+  userId                 String?           @map("user_id") @db.Uuid
+  anonymousSessionId     String?           @map("anonymous_session_id") @db.Uuid
+  status                 PregnancyStatus   @default(active)
+  dueDate                DateTime          @map("due_date") @db.Date
+  datingMethod           DatingMethod      @map("dating_method")
+  datingSource           DatingSource      @map("dating_source")
+  firstPregnancy         Boolean?          @map("first_pregnancy")
+  fetusCount             FetusCount        @default(unknown) @map("fetus_count")
+  confirmedByClinician   Boolean?          @map("confirmed_by_clinician")
+  /// Clinician advised avoiding exercise: movement suggestions are hidden.
+  restrictExercise       Boolean           @default(false) @map("restrict_exercise")
+  /// Free tags for foods a clinician advised avoiding, e.g. "dairy". Max 20 (API).
+  foodRestrictions       String[]          @default([]) @map("food_restrictions")
+  /// A clinician or dietitian manages what this user eats (for example because of a condition).
+  /// Generic meal plans are then withheld. Self-reported; never inferred.
+  clinicianNutritionPlan Boolean           @default(false) @map("clinician_nutrition_plan")
+  /// Kick-count threshold the user entered from their clinician's instructions (both or neither).
+  /// The app never proposes a value. Health data: never logged.
+  kickThresholdCount     Int?              @map("kick_threshold_count") @db.SmallInt
+  kickThresholdMinutes   Int?              @map("kick_threshold_minutes") @db.SmallInt
+  kickThresholdUpdatedAt DateTime?         @map("kick_threshold_updated_at") @db.Timestamptz
+  /// Health data: never logged or sent to analytics.
+  outcome                PregnancyOutcome?
+  endedOn                DateTime?         @map("ended_on") @db.Date
+  createdAt              DateTime          @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt              DateTime          @updatedAt @map("updated_at") @db.Timestamptz
+
+  user             User?             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  anonymousSession AnonymousSession? @relation(fields: [anonymousSessionId], references: [id], onDelete: Cascade)
+  datings          PregnancyDating[]
+  birthPreferences BirthPreferences?
+  appointments     Appointment[]
+  kickSessions     KickSession[]
+  contractions     Contraction[]
+
+  @@index([userId, createdAt(sort: Desc)])
+  @@index([anonymousSessionId, createdAt(sort: Desc)])
+  @@map("pregnancies")
+}
+
+/// Append-only dating history: every due-date estimate and what it was based on.
+model PregnancyDating {
+  id          String       @id @default(uuid(7)) @db.Uuid
+  pregnancyId String       @map("pregnancy_id") @db.Uuid
+  method      DatingMethod
+  source      DatingSource
+  /// The inputs the estimate came from (dates, cycle length, gestational age at scan).
+  inputs      Json
+  dueDate     DateTime     @map("due_date") @db.Date
+  createdAt   DateTime     @default(now()) @map("created_at") @db.Timestamptz
+
+  pregnancy Pregnancy @relation(fields: [pregnancyId], references: [id], onDelete: Cascade)
+
+  @@index([pregnancyId, createdAt(sort: Desc)])
+  @@map("pregnancy_datings")
+}
+
+// ---------------------------------------------------------------------------
+// Planning and tracking (user-owned; exactly one of userId / anonymousSessionId —
+// CHECK constraints in the migration). All of it is health data: never logged.
+// ---------------------------------------------------------------------------
+
+enum AppointmentKind {
+  antenatal
+  scan
+  blood_test
+  glucose_test
+  specialist
+  postnatal
+  newborn_check
+  other
+}
+
+model Appointment {
+  id                 String          @id @default(uuid(7)) @db.Uuid
+  userId             String?         @map("user_id") @db.Uuid
+  anonymousSessionId String?         @map("anonymous_session_id") @db.Uuid
+  /// The pregnancy it belongs to, if any. Kept (set null) if that pregnancy is deleted.
+  pregnancyId        String?         @map("pregnancy_id") @db.Uuid
+  kind               AppointmentKind
+  title              String
+  startsAt           DateTime        @map("starts_at") @db.Timestamptz
+  location           String?
+  notes              String?
+  /// Questions to take to the appointment.
+  questions          String[]        @default([])
+  createdAt          DateTime        @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt          DateTime        @updatedAt @map("updated_at") @db.Timestamptz
+
+  user             User?             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  anonymousSession AnonymousSession? @relation(fields: [anonymousSessionId], references: [id], onDelete: Cascade)
+  pregnancy        Pregnancy?        @relation(fields: [pregnancyId], references: [id], onDelete: SetNull)
+
+  @@index([userId, startsAt])
+  @@index([anonymousSessionId, startsAt])
+  @@map("appointments")
+}
+
+/// A meal the user marked as eaten. Idempotent per (owner, date, slot, recipe).
+model MealLog {
+  id                 String   @id @default(uuid(7)) @db.Uuid
+  userId             String?  @map("user_id") @db.Uuid
+  anonymousSessionId String?  @map("anonymous_session_id") @db.Uuid
+  date               DateTime @db.Date
+  /// breakfast | lunch | dinner | snack
+  slot               String
+  recipeSlug         String   @map("recipe_slug")
+  createdAt          DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  user             User?             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  anonymousSession AnonymousSession? @relation(fields: [anonymousSessionId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, date, slot, recipeSlug])
+  @@unique([anonymousSessionId, date, slot, recipeSlug])
+  @@map("meal_logs")
+}
+
+/// An activity the user marked as done. Not medical monitoring. Idempotent per (owner, date, activity).
+model ActivityLog {
+  id                 String   @id @default(uuid(7)) @db.Uuid
+  userId             String?  @map("user_id") @db.Uuid
+  anonymousSessionId String?  @map("anonymous_session_id") @db.Uuid
+  date               DateTime @db.Date
+  activitySlug       String   @map("activity_slug")
+  minutes            Int?     @db.SmallInt
+  createdAt          DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt          DateTime @updatedAt @map("updated_at") @db.Timestamptz
+
+  user             User?             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  anonymousSession AnonymousSession? @relation(fields: [anonymousSessionId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, date, activitySlug])
+  @@unique([anonymousSessionId, date, activitySlug])
+  @@map("activity_logs")
+}
+
+/// Bookmarked content (articles, recipes, activities, meal plans) by slug, so it survives new versions.
+model SavedContent {
+  id                 String      @id @default(uuid(7)) @db.Uuid
+  userId             String?     @map("user_id") @db.Uuid
+  anonymousSessionId String?     @map("anonymous_session_id") @db.Uuid
+  kind               ContentKind
+  slug               String
+  createdAt          DateTime    @default(now()) @map("created_at") @db.Timestamptz
+
+  user             User?             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  anonymousSession AnonymousSession? @relation(fields: [anonymousSessionId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, kind, slug])
+  @@unique([anonymousSessionId, kind, slug])
+  @@map("saved_content")
+}
+
+model ShoppingItem {
+  id                 String   @id @default(uuid(7)) @db.Uuid
+  userId             String?  @map("user_id") @db.Uuid
+  anonymousSessionId String?  @map("anonymous_session_id") @db.Uuid
+  /// Lower-cased, trimmed; unique per owner so adding from several recipes merges.
+  name               String
+  quantity           String?
+  checked            Boolean  @default(false)
+  /// Recipe the item came from, if any.
+  recipeSlug         String?  @map("recipe_slug")
+  createdAt          DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt          DateTime @updatedAt @map("updated_at") @db.Timestamptz
+
+  user             User?             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  anonymousSession AnonymousSession? @relation(fields: [anonymousSessionId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, name])
+  @@unique([anonymousSessionId, name])
+  @@map("shopping_items")
+}
+
+/// Birth preferences for one pregnancy (owned through it). A conversation aid, not a birth plan.
+model BirthPreferences {
+  id               String   @id @default(uuid(7)) @db.Uuid
+  pregnancyId      String   @unique @map("pregnancy_id") @db.Uuid
+  birthSetting     String?  @map("birth_setting")
+  painRelief       String[] @default([]) @map("pain_relief")
+  supportPeople    String[] @default([]) @map("support_people")
+  feedingIntention String?  @map("feeding_intention")
+  notes            String?
+  createdAt        DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt        DateTime @updatedAt @map("updated_at") @db.Timestamptz
+
+  pregnancy Pregnancy @relation(fields: [pregnancyId], references: [id], onDelete: Cascade)
+
+  @@map("birth_preferences")
+}
+
+/// Completion of a daily-plan task that has no other record (e.g. "read this week's guide").
+/// Tasks backed by real records (journal, meals, activities, checklist) take their state from those.
+model PlanTaskCompletion {
+  id                 String   @id @default(uuid(7)) @db.Uuid
+  userId             String?  @map("user_id") @db.Uuid
+  anonymousSessionId String?  @map("anonymous_session_id") @db.Uuid
+  date               DateTime @db.Date
+  taskKey            String   @map("task_key")
+  completedAt        DateTime @default(now()) @map("completed_at") @db.Timestamptz
+
+  user             User?             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  anonymousSession AnonymousSession? @relation(fields: [anonymousSessionId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, date, taskKey])
+  @@unique([anonymousSessionId, date, taskKey])
+  @@map("plan_task_completions")
+}
+
+// ---------------------------------------------------------------------------
+// Symptom checks, kick counting, contractions and weight (2026-11-07)
+// ---------------------------------------------------------------------------
+
+enum TriageLevel {
+  routine
+  call_clinic_today
+  emergency
+}
+
+/// One run of the red-flag screen and its rule-based result. Never a diagnosis.
+/// Health data: never logged or written to audit metadata.
+model SymptomCheck {
+  id                 String      @id @default(uuid(7)) @db.Uuid
+  userId             String?     @map("user_id") @db.Uuid
+  anonymousSessionId String?     @map("anonymous_session_id") @db.Uuid
+  /// The owner's local date (profile time zone) when the check was made.
+  date               DateTime    @db.Date
+  symptoms           String[]
+  level              TriageLevel
+  matchedRules       String[]    @default([]) @map("matched_rules")
+  /// pregnancy | postpartum | unknown, as the API determined it.
+  stage              String
+  rulesVersion       String      @map("rules_version")
+  createdAt          DateTime    @default(now()) @map("created_at") @db.Timestamptz
+
+  user             User?             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  anonymousSession AnonymousSession? @relation(fields: [anonymousSessionId], references: [id], onDelete: Cascade)
+
+  @@index([userId, date])
+  @@index([anonymousSessionId, date])
+  @@map("symptom_checks")
+}
+
+/// A kick-counting session (third trimester). Owned directly and linked to the pregnancy.
+model KickSession {
+  id                 String    @id @default(uuid(7)) @db.Uuid
+  userId             String?   @map("user_id") @db.Uuid
+  anonymousSessionId String?   @map("anonymous_session_id") @db.Uuid
+  pregnancyId        String    @map("pregnancy_id") @db.Uuid
+  /// Owner's local date when the session started.
+  date               DateTime  @db.Date
+  startedAt          DateTime  @map("started_at") @db.Timestamptz
+  endedAt            DateTime? @map("ended_at") @db.Timestamptz
+  count              Int       @default(0) @db.SmallInt
+  createdAt          DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt          DateTime  @updatedAt @map("updated_at") @db.Timestamptz
+
+  user             User?             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  anonymousSession AnonymousSession? @relation(fields: [anonymousSessionId], references: [id], onDelete: Cascade)
+  pregnancy        Pregnancy         @relation(fields: [pregnancyId], references: [id], onDelete: Cascade)
+
+  @@index([userId, date])
+  @@index([anonymousSessionId, date])
+  @@map("kick_sessions")
+}
+
+/// One timed contraction. Interval and duration are computed by the API, never advice.
+model Contraction {
+  id                 String    @id @default(uuid(7)) @db.Uuid
+  userId             String?   @map("user_id") @db.Uuid
+  anonymousSessionId String?   @map("anonymous_session_id") @db.Uuid
+  pregnancyId        String?   @map("pregnancy_id") @db.Uuid
+  /// Owner's local date when it started.
+  date               DateTime  @db.Date
+  startedAt          DateTime  @map("started_at") @db.Timestamptz
+  endedAt            DateTime? @map("ended_at") @db.Timestamptz
+  createdAt          DateTime  @default(now()) @map("created_at") @db.Timestamptz
+
+  user             User?             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  anonymousSession AnonymousSession? @relation(fields: [anonymousSessionId], references: [id], onDelete: Cascade)
+  pregnancy        Pregnancy?        @relation(fields: [pregnancyId], references: [id], onDelete: SetNull)
+
+  @@unique([userId, startedAt])
+  @@unique([anonymousSessionId, startedAt])
+  @@index([userId, date])
+  @@index([anonymousSessionId, date])
+  @@map("contractions")
+}
+
+/// Opt-in weight entry, one per owner and date. No targets or ranges are stored or computed.
+model WeightEntry {
+  id                 String   @id @default(uuid(7)) @db.Uuid
+  userId             String?  @map("user_id") @db.Uuid
+  anonymousSessionId String?  @map("anonymous_session_id") @db.Uuid
+  date               DateTime @db.Date
+  weightKg           Decimal  @map("weight_kg") @db.Decimal(5, 2)
+  createdAt          DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt          DateTime @updatedAt @map("updated_at") @db.Timestamptz
+
+  user             User?             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  anonymousSession AnonymousSession? @relation(fields: [anonymousSessionId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, date])
+  @@unique([anonymousSessionId, date])
+  @@map("weight_entries")
+}

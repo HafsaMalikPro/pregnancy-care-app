@@ -1,0 +1,13 @@
+# Never send secrets, local state or build output into the image build.
+**/.env
+**/.env.*
+!**/.env.example
+**/node_modules
+**/dist
+**/coverage
+**/.turbo
+.git
+.github
+**/*.log
+**/.DS_Store
+docs

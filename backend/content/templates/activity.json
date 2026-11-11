@@ -1,0 +1,24 @@
+{
+  "kind": "activity",
+  "slug": "<lowercase-hyphenated-slug>",
+  "locale": "en",
+  "title": "<Activity name>",
+  "summary": "<One sentence>",
+  "category": "exercise",
+  "trimester": null,
+  "tags": [],
+  "sections": {
+    "type": "walking",
+    "instructions": ["<Instruction>"],
+    "durationMinutes": null,
+    "intensity": null,
+    "trimesters": [1, 2, 3],
+    "fromWeek": null,
+    "toWeek": null,
+    "safetyNotes": ["<Safety note>"],
+    "contraindications": ["<When not to do this>"],
+    "stopSigns": ["<Stop and seek care if…>"],
+    "media": []
+  },
+  "references": [{ "title": "<Source title>", "url": "https://example.org/<source>" }]
+}

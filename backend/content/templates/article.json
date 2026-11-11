@@ -1,0 +1,12 @@
+{
+  "kind": "article",
+  "slug": "<lowercase-hyphenated-slug>",
+  "locale": "en",
+  "title": "<Article title>",
+  "summary": "<One sentence>",
+  "body": "<Markdown body>",
+  "category": "newborn_care",
+  "trimester": null,
+  "tags": [],
+  "references": [{ "title": "<Source title>", "url": "https://example.org/<source>" }]
+}

@@ -1,0 +1,151 @@
+{
+  "version": "2026-11-07.1",
+  "review": null,
+  "sources": [
+    {
+      "id": "cdc_hear_her",
+      "title": "CDC Hear Her campaign: Urgent maternal warning signs",
+      "url": "https://www.cdc.gov/hearher/maternal-warning-signs/index.html"
+    }
+  ],
+  "levels": {
+    "emergency": {
+      "headline": "Get medical help now",
+      "message": "You selected an urgent warning sign. Don't wait to see if it gets better.",
+      "callToAction": {
+        "label": "Call your doctor now or go to emergency services",
+        "kind": "emergency"
+      }
+    },
+    "call_clinic_today": {
+      "headline": "Contact your maternity team today",
+      "message": "Call your clinic or maternity unit today and tell them what you've noticed.",
+      "callToAction": {
+        "label": "Call your clinic or maternity unit today",
+        "kind": "call_clinic"
+      }
+    },
+    "routine": {
+      "headline": "No urgent warning signs selected",
+      "message": "None of the symptoms you selected are on this app's urgent warning-sign list. This is not a diagnosis. If you're worried, or a symptom gets worse or doesn't go away, contact your maternity team. You can note it in your journal to discuss at your next appointment.",
+      "callToAction": null
+    }
+  },
+  "symptoms": [
+    {
+      "code": "severe_headache",
+      "label": "Headache that won't go away or gets worse over time",
+      "stages": ["pregnancy", "postpartum"],
+      "source": "cdc_hear_her"
+    },
+    {
+      "code": "dizziness_or_fainting",
+      "label": "Dizziness or fainting",
+      "stages": ["pregnancy", "postpartum"],
+      "source": "cdc_hear_her"
+    },
+    {
+      "code": "vision_changes",
+      "label": "Changes in your vision",
+      "stages": ["pregnancy", "postpartum"],
+      "source": "cdc_hear_her"
+    },
+    {
+      "code": "fever",
+      "label": "Fever of 100.4°F (38°C) or higher",
+      "stages": ["pregnancy", "postpartum"],
+      "source": "cdc_hear_her"
+    },
+    {
+      "code": "severe_swelling_face_hands",
+      "label": "Extreme swelling of your hands or face",
+      "stages": ["pregnancy", "postpartum"],
+      "source": "cdc_hear_her"
+    },
+    {
+      "code": "thoughts_of_harm",
+      "label": "Thoughts of harming yourself or your baby",
+      "stages": ["pregnancy", "postpartum"],
+      "source": "cdc_hear_her"
+    },
+    {
+      "code": "trouble_breathing",
+      "label": "Trouble breathing",
+      "stages": ["pregnancy", "postpartum"],
+      "source": "cdc_hear_her"
+    },
+    {
+      "code": "chest_pain_or_fast_heartbeat",
+      "label": "Chest pain or fast-beating heart",
+      "stages": ["pregnancy", "postpartum"],
+      "source": "cdc_hear_her"
+    },
+    {
+      "code": "severe_vomiting",
+      "label": "Severe nausea and throwing up (not like morning sickness)",
+      "stages": ["pregnancy", "postpartum"],
+      "source": "cdc_hear_her"
+    },
+    {
+      "code": "severe_abdominal_pain",
+      "label": "Severe belly pain that doesn't go away",
+      "stages": ["pregnancy", "postpartum"],
+      "source": "cdc_hear_her"
+    },
+    {
+      "code": "reduced_baby_movement",
+      "label": "Baby's movements stopping or slowing",
+      "stages": ["pregnancy"],
+      "source": "cdc_hear_her"
+    },
+    {
+      "code": "bleeding_or_fluid_in_pregnancy",
+      "label": "Vaginal bleeding or fluid leaking",
+      "stages": ["pregnancy"],
+      "source": "cdc_hear_her"
+    },
+    {
+      "code": "heavy_bleeding_or_bad_smelling_discharge_after_birth",
+      "label": "Heavy vaginal bleeding or leaking fluid that smells bad",
+      "stages": ["postpartum"],
+      "source": "cdc_hear_her"
+    },
+    {
+      "code": "leg_swelling_redness_pain",
+      "label": "Swelling, redness or pain of your leg",
+      "stages": ["pregnancy", "postpartum"],
+      "source": "cdc_hear_her"
+    },
+    {
+      "code": "overwhelming_tiredness",
+      "label": "Overwhelming tiredness",
+      "stages": ["pregnancy", "postpartum"],
+      "source": "cdc_hear_her"
+    }
+  ],
+  "rules": [
+    {
+      "id": "urgent_maternal_warning_sign",
+      "level": "emergency",
+      "anyOf": [
+        "severe_headache",
+        "dizziness_or_fainting",
+        "vision_changes",
+        "fever",
+        "severe_swelling_face_hands",
+        "thoughts_of_harm",
+        "trouble_breathing",
+        "chest_pain_or_fast_heartbeat",
+        "severe_vomiting",
+        "severe_abdominal_pain",
+        "reduced_baby_movement",
+        "bleeding_or_fluid_in_pregnancy",
+        "heavy_bleeding_or_bad_smelling_discharge_after_birth",
+        "leg_swelling_redness_pain",
+        "overwhelming_tiredness"
+      ],
+      "source": "cdc_hear_her"
+    }
+  ],
+  "disclaimer": "This is general information, not medical advice. This check follows a fixed list of warning signs and cannot diagnose anything. If you think you or your baby may be in danger, call your local emergency number."
+}
