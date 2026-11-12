@@ -62,7 +62,14 @@ export async function api<T>(
   path: string,
   { method = "GET", body, query, asAccount = false }: RequestOptions = {},
 ): Promise<T> {
-  const url = new URL(`${API_URL}${path}`);
+  // With API_PROXY on, the browser calls its own origin and Next forwards /v1/* to the API
+  // (next.config.ts), so the session cookie is first-party. Different subdomains of a shared
+  // suffix such as up.railway.app are cross-site, and the API's SameSite=Lax cookie is dropped.
+  const base =
+    process.env.NEXT_PUBLIC_API_PROXY === "true" && typeof window !== "undefined"
+      ? window.location.origin
+      : API_URL;
+  const url = new URL(`${base}${path}`);
   for (const [key, value] of Object.entries(query ?? {})) {
     if (value !== undefined && value !== null && value !== "") {
       url.searchParams.set(key, String(value));
