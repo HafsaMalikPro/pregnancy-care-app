@@ -8,9 +8,10 @@
 //   Better Auth core schema; reconcile with `npx @better-auth/cli generate` when auth lands (Day 2).
 
 generator client {
-  provider     = "prisma-client"
-  output       = "../src/generated/prisma"
-  moduleFormat = "esm"
+  provider            = "prisma-client"
+  output              = "../src/generated/prisma"
+  moduleFormat        = "esm"
+  importFileExtension = "js"
 }
 
 datasource db {
