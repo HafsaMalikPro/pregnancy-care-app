@@ -6,7 +6,7 @@ import { toNodeHandler } from 'better-auth/node';
 import type { Express, NextFunction, Request, Response } from 'express';
 import { AUTH, type Auth } from './auth/auth.provider.js';
 import { AUTH_BASE_PATH, BLOCKED_AUTH_PREFIXES } from './auth/better-auth.js';
-import { clientIpMiddleware } from './auth/client-ip.js';
+import { createClientIpMiddleware } from './auth/client-ip.js';
 import { jsonOnlyMiddleware } from './common/middleware/content-type.middleware.js';
 import { createAppLogger } from './common/logging/redacting-logger.js';
 import { csrfMiddleware } from './common/middleware/csrf.middleware.js';
@@ -33,7 +33,9 @@ export async function setupApp(app: INestApplication): Promise<void> {
   express.set('trust proxy', config.get('TRUST_PROXY', { infer: true }));
   // Registered before init() adds the body parser, so parser errors get a request id too.
   app.use(requestIdMiddleware);
-  app.use(clientIpMiddleware);
+  app.use(
+    createClientIpMiddleware(config.get('PROXY_SECRET', { infer: true })),
+  );
   // Credentialed CORS only for the exact allowed origins. A refused origin gets no CORS
   // headers at all: the cors package would otherwise still send Allow-Credentials (F-05).
   const allowedOrigins = new Set(config.get('CORS_ORIGINS', { infer: true }));

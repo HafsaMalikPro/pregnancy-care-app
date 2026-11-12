@@ -1,8 +1,17 @@
 import type { ErrorCode } from "./types";
 
+/** The API itself: server-side reads (public-api.ts) and the proxy's target (src/proxy.ts). */
 export const API_URL = (
   process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000"
 ).replace(/\/$/, "");
+
+/**
+ * Where the browser sends API calls: this site's own origin, which src/proxy.ts forwards to
+ * API_URL. Same-origin requests keep the session cookie first-party and need no CORS. Outside
+ * a browser (tests, server code) it is the API itself.
+ */
+const requestBase = () =>
+  typeof window === "undefined" ? API_URL : window.location.origin;
 
 const GUEST_SECRET_KEY = "pregnancy-care.guest-secret";
 
@@ -62,7 +71,7 @@ export async function api<T>(
   path: string,
   { method = "GET", body, query, asAccount = false }: RequestOptions = {},
 ): Promise<T> {
-  const url = new URL(`${API_URL}${path}`);
+  const url = new URL(`${requestBase()}${path}`);
   for (const [key, value] of Object.entries(query ?? {})) {
     if (value !== undefined && value !== null && value !== "") {
       url.searchParams.set(key, String(value));

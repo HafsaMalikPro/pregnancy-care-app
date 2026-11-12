@@ -119,6 +119,16 @@ const EnvSchema = z.object({
       return z.NEVER;
     }),
   /**
+   * Shared with the website's same-origin proxy (frontend `src/proxy.ts`). A request carrying
+   * it may name the visitor's IP in `x-pc-proxy-client-ip`; without it that header is ignored.
+   * At least 32 random characters. Unset: no proxy is trusted.
+   */
+  PROXY_SECRET: z
+    .string()
+    .optional()
+    .transform((v) => v?.trim() || undefined)
+    .pipe(z.string().min(32).optional()),
+  /**
    * Breached-password check on sign-up, password change and reset. `bundled` (default) checks
    * the bundled list only. `hibp` also asks Have I Been Pwned's k-anonymity range API (only
    * the first 5 hex characters of the SHA-1 leave the server); needs outbound HTTPS.
@@ -227,6 +237,9 @@ function checkCombinations(
   }
   if (weakSecret(env.BETTER_AUTH_SECRET)) {
     issue('BETTER_AUTH_SECRET', 'too weak or a placeholder');
+  }
+  if (env.PROXY_SECRET && weakSecret(env.PROXY_SECRET)) {
+    issue('PROXY_SECRET', 'too weak or a placeholder');
   }
   if (!env.RATE_LIMIT_ENABLED)
     issue('RATE_LIMIT_ENABLED', 'must be true in production');

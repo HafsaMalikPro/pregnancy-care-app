@@ -16,6 +16,14 @@ describe("api", () => {
     expect(init).toMatchObject({ method: "POST", credentials: "include", body: '{"a":1}' });
   });
 
+  it("calls the site's own origin in the browser (forwarded by src/proxy.ts)", async () => {
+    const fetch = respond(200, { ok: true });
+    vi.stubGlobal("fetch", fetch);
+    vi.stubGlobal("window", { location: { origin: "https://site.example" }, localStorage: undefined });
+    await api("/v1/me");
+    expect(String(fetch.mock.calls[0][0])).toBe("https://site.example/v1/me");
+  });
+
   it("parses the Nest error envelope with field details", async () => {
     vi.stubGlobal("fetch", respond(400, {
       error: { code: "VALIDATION_ERROR", message: "Invalid", details: [{ path: "lmpDate", message: "lmpDate cannot be in the future" }] },
